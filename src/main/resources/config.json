@@ -1,0 +1,9 @@
+{
+  "jei": {
+    "keybind": "R",
+    "itemsPerPage": 54,
+    "searchDelay": 100,
+    "showTooltips": true,
+    "defaultCategory": "all"
+  }
+}

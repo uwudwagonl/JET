@@ -1,0 +1,53 @@
+Group {
+  LayoutMode: Top;
+  Padding: (Full: 8, Bottom: 12);
+  Background: (Color: #1e1e1e(0.9));
+  Anchor: (Bottom: 8);
+
+  Label #RecipeTitle {
+    Style: (
+      FontSize: 13,
+      RenderBold: true,
+      TextColor: #ffcc66
+    );
+    Padding: (Bottom: 6);
+  }
+
+  Group {
+    LayoutMode: Left;
+    Padding: (Top: 4);
+
+    Label {
+      Style: (
+        FontSize: 11,
+        TextColor: #ff8888
+      );
+      Text: "Input:";
+      Anchor: (Width: 50);
+    }
+
+    Group #InputItems {
+      LayoutMode: Left;
+      FlexWeight: 1;
+    }
+  }
+
+  Group {
+    LayoutMode: Left;
+    Padding: (Top: 4);
+
+    Label {
+      Style: (
+        FontSize: 11,
+        TextColor: #88ff88
+      );
+      Text: "Output:";
+      Anchor: (Width: 50);
+    }
+
+    Group #OutputItems {
+      LayoutMode: Left;
+      FlexWeight: 1;
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "Group": "JET",
+  "Name": "Just Enough Tales (JET)",
+  "Version": "1.0.0-beta.10",
+  "Description": "Browse all items with search, categories, recipes and uses. Press Mouse X1 button or /jet to open.",
+  "Authors": [{"Name": "uwudwagon"}, {"Name": "kuudraloremaster"}],
+  "Website": "",
+  "ServerVersion": "*",
+  "Dependencies": {
+    "Hytale:EntityModule": "*"
+  },
+  "OptionalDependencies": {},
+  "DisabledByDefault": false,
+  "Main": "dev.hytalemod.jet.JETPlugin",
+  "IncludesAssetPack": true
+}
