@@ -5,6 +5,7 @@ import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.protocol.BenchRequirement;
 import com.hypixel.hytale.protocol.packets.interface_.CustomPageLifetime;
 import com.hypixel.hytale.protocol.packets.interface_.CustomUIEventBindingType;
 import com.hypixel.hytale.server.core.Message;
@@ -19,156 +20,172 @@ import com.hypixel.hytale.server.core.ui.builder.UIEventBuilder;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import dev.hytalemod.jet.JETPlugin;
-import dev.hytalemod.jet.registry.ItemRegistry;
-import dev.hytalemod.jet.registry.RecipeRegistry;
 
-import java.util.List;
-import java.util.Map;
+import java.lang.reflect.Method;
+import java.util.*;
 
 /**
  * JET Browser GUI with item browsing, recipes, and uses.
  */
 public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
-    
+
     private static final int ITEMS_PER_ROW = 7;
     private static final int MAX_ROWS = 8;
     private static final int MAX_ITEMS = ITEMS_PER_ROW * MAX_ROWS;
     private static final int RECIPES_PER_PAGE = 3;
-    
+
     private String searchQuery;
     private String selectedItem;
-    private String viewMode;
-    private int recipePage;
-    
+    private String activeSection; // "craft" or "usage"
+    private int craftPage;
+    private int usagePage;
+
     public JETGui(PlayerRef playerRef, CustomPageLifetime lifetime, String initialSearch) {
         super(playerRef, lifetime, GuiData.CODEC);
         this.searchQuery = initialSearch != null ? initialSearch : "";
         this.selectedItem = null;
-        this.viewMode = "craft";
-        this.recipePage = 0;
+        this.activeSection = "craft";
+        this.craftPage = 0;
+        this.usagePage = 0;
     }
-    
+
     @Override
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Gui.ui");
         cmd.set("#SearchInput.Value", searchQuery);
-        
+
         // Search input event
         events.addEventBinding(
-            CustomUIEventBindingType.ValueChanged,
-            "#SearchInput",
-            EventData.of("@SearchQuery", "#SearchInput.Value"),
-            false
+                CustomUIEventBindingType.ValueChanged,
+                "#SearchInput",
+                EventData.of("@SearchQuery", "#SearchInput.Value"),
+                false
         );
 
-        // Mode toggle button
-        events.addEventBinding(
-            CustomUIEventBindingType.Activating,
-            "#RecipePanel #ToggleModeButton",
-            EventData.of("ToggleMode", "toggle"),
-            false
-        );
+        // Section toggle buttons
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#RecipePanel #SectionButtons #CraftButton", EventData.of("ActiveSection", "craft"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#RecipePanel #SectionButtons #UsageButton", EventData.of("ActiveSection", "usage"), false);
 
         // Pagination
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#PrevRecipe", EventData.of("PageChange", "prev"), false);
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#NextRecipe", EventData.of("PageChange", "next"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#PrevRecipe", EventData.of("CraftPageChange", "prev"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#NextRecipe", EventData.of("CraftPageChange", "next"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#PrevUsage", EventData.of("UsagePageChange", "prev"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#NextUsage", EventData.of("UsagePageChange", "next"), false);
 
         buildItemList(ref, cmd, events, store);
-        buildRecipePanel(cmd);
+        buildRecipePanel(ref, cmd, events, store);
     }
-    
+
     @Override
     public void handleDataEvent(Ref<EntityStore> ref, Store<EntityStore> store, GuiData data) {
         super.handleDataEvent(ref, store, data);
-        
+
         boolean needsItemUpdate = false;
         boolean needsRecipeUpdate = false;
-        
+
         if (data.searchQuery != null && !data.searchQuery.equals(this.searchQuery)) {
             this.searchQuery = data.searchQuery.trim();
             needsItemUpdate = true;
         }
-        
+
         if (data.selectedItem != null && !data.selectedItem.isEmpty()) {
             this.selectedItem = data.selectedItem;
-            this.recipePage = 0;
-            needsRecipeUpdate = true;
-        }
-        
-        if (data.viewMode != null && !data.viewMode.isEmpty() && !data.viewMode.equals(this.viewMode)) {
-            this.viewMode = data.viewMode;
-            this.recipePage = 0;
+            this.craftPage = 0;
+            this.usagePage = 0;
+            this.activeSection = "craft";
             needsRecipeUpdate = true;
         }
 
-        if (data.toggleMode != null && "toggle".equals(data.toggleMode)) {
-            // Toggle between craft and uses modes
-            this.viewMode = "craft".equals(this.viewMode) ? "uses" : "craft";
-            this.recipePage = 0;
+        if (data.activeSection != null && !data.activeSection.isEmpty() && !data.activeSection.equals(this.activeSection)) {
+            this.activeSection = data.activeSection;
+            this.craftPage = 0;
+            this.usagePage = 0;
             needsRecipeUpdate = true;
         }
-        
-        if (data.pageChange != null) {
-            if ("prev".equals(data.pageChange) && recipePage > 0) {
-                recipePage--;
+
+        if (data.craftPageChange != null && "craft".equals(this.activeSection)) {
+            List<String> recipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(this.selectedItem, Collections.emptyList());
+            int totalPages = (int) Math.ceil((double) recipeIds.size() / RECIPES_PER_PAGE);
+
+            if ("prev".equals(data.craftPageChange) && craftPage > 0) {
+                craftPage--;
                 needsRecipeUpdate = true;
-            } else if ("next".equals(data.pageChange)) {
-                recipePage++;
+            } else if ("next".equals(data.craftPageChange) && craftPage < totalPages - 1) {
+                craftPage++;
                 needsRecipeUpdate = true;
             }
         }
-        
+
+        if (data.usagePageChange != null && "usage".equals(this.activeSection)) {
+            List<String> recipeIds = JETPlugin.ITEM_FROM_RECIPES.getOrDefault(this.selectedItem, Collections.emptyList());
+            int totalPages = (int) Math.ceil((double) recipeIds.size() / RECIPES_PER_PAGE);
+
+            if ("prev".equals(data.usagePageChange) && usagePage > 0) {
+                usagePage--;
+                needsRecipeUpdate = true;
+            } else if ("next".equals(data.usagePageChange) && usagePage < totalPages - 1) {
+                usagePage++;
+                needsRecipeUpdate = true;
+            }
+        }
+
         if (needsItemUpdate || needsRecipeUpdate) {
             UICommandBuilder cmd = new UICommandBuilder();
             UIEventBuilder events = new UIEventBuilder();
-            
+
             if (needsItemUpdate) {
                 buildItemList(ref, cmd, events, store);
             }
             if (needsRecipeUpdate) {
-                buildRecipePanel(cmd);
+                buildRecipePanel(ref, cmd, events, store);
             }
-            
+
             sendUpdate(cmd, events, false);
         }
     }
-    
+
     private void buildItemList(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
-        ItemRegistry registry = JETPlugin.getInstance().getItemRegistry();
-        List<Map.Entry<String, Item>> results = registry.search(searchQuery);
-        
+        List<Map.Entry<String, Item>> results = new ArrayList<>();
+
+        // Use global ITEMS map like Lumenia
+        for (Map.Entry<String, Item> entry : JETPlugin.ITEMS.entrySet()) {
+            if (searchQuery.isEmpty() || matchesSearch(entry.getKey(), entry.getValue())) {
+                results.add(entry);
+            }
+        }
+
         cmd.clear("#ItemCards");
-        
+
         String language = playerRef.getLanguage();
-        
+
         int row = 0;
         int col = 0;
         int count = 0;
-        
+
         for (Map.Entry<String, Item> entry : results) {
             if (count >= MAX_ITEMS) break;
-            
+
             String key = entry.getKey();
             Item item = entry.getValue();
-            
+
             if (col == 0) {
                 cmd.appendInline("#ItemCards", "Group { LayoutMode: Left; Anchor: (Bottom: 0); }");
             }
-            
+
             cmd.append("#ItemCards[" + row + "]", "Pages/JET_ItemIcon.ui");
             String sel = "#ItemCards[" + row + "][" + col + "]";
-            
+
             cmd.set(sel + " #ItemIcon.ItemId", key);
-            
+
             String displayName = getDisplayName(item, language);
             if (displayName.length() > 14) {
                 displayName = displayName.substring(0, 12) + "...";
             }
             cmd.set(sel + " #ItemName.TextSpans", Message.raw(displayName));
             cmd.set(sel + ".TooltipTextSpans", buildTooltip(key, item, language));
-            
+
             events.addEventBinding(CustomUIEventBindingType.Activating, sel, EventData.of("SelectedItem", key), false);
-            
+
             col++;
             if (col >= ITEMS_PER_ROW) {
                 col = 0;
@@ -177,118 +194,145 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             count++;
         }
     }
-    
-    private void buildRecipePanel(UICommandBuilder cmd) {
-        if (selectedItem == null) {
+
+    private boolean matchesSearch(String itemId, Item item) {
+        String query = searchQuery.toLowerCase();
+        String language = playerRef.getLanguage();
+
+        // Check translated name
+        String translatedName = getDisplayName(item, language).toLowerCase();
+        if (translatedName.contains(query)) return true;
+
+        // Check item ID
+        if (itemId.toLowerCase().contains(query)) return true;
+
+        return false;
+    }
+
+    private void buildRecipePanel(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
+        if (selectedItem == null || selectedItem.isEmpty()) {
             cmd.set("#RecipePanel.Visible", false);
             return;
         }
 
         cmd.set("#RecipePanel.Visible", true);
 
-        RecipeRegistry recipeReg = JETPlugin.getInstance().getRecipeRegistry();
-        ItemRegistry itemReg = JETPlugin.getInstance().getItemRegistry();
-        Item item = itemReg.get(selectedItem);
+        // Use global ITEMS map
+        Item item = JETPlugin.ITEMS.get(selectedItem);
         String language = playerRef.getLanguage();
 
         cmd.set("#RecipePanel #SelectedIcon.ItemId", selectedItem);
         cmd.set("#RecipePanel #SelectedName.TextSpans", Message.raw(getDisplayName(item, language)));
 
-        // Get recipes
-        List<CraftingRecipe> recipes = "craft".equals(viewMode)
-            ? recipeReg.getCraftingRecipes(selectedItem)
-            : recipeReg.getUsageRecipes(selectedItem);
+        // Get recipe IDs from global maps like Lumenia
+        List<String> craftRecipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(selectedItem, Collections.emptyList());
+        List<String> usageRecipeIds = JETPlugin.ITEM_FROM_RECIPES.getOrDefault(selectedItem, Collections.emptyList());
 
-        // Debug logging
-        System.out.println("[JET] Item: " + selectedItem + ", Mode: " + viewMode + ", Recipes found: " + recipes.size());
-        if ("craft".equals(viewMode)) {
-            System.out.println("[JET] Has crafting recipes: " + recipeReg.hasCraftingRecipes(selectedItem));
+        if ("craft".equals(activeSection)) {
+            buildCraftSection(cmd, events, craftRecipeIds);
         } else {
-            System.out.println("[JET] Has usage recipes: " + recipeReg.hasUsageRecipes(selectedItem));
+            buildUsageSection(cmd, events, usageRecipeIds);
         }
+    }
 
-        // Clear recipe list - use full path like Lumenia
+    private void buildCraftSection(UICommandBuilder cmd, UIEventBuilder events, List<String> recipeIds) {
         cmd.clear("#RecipePanel #RecipeListContainer #RecipeList");
 
-        if (recipes.isEmpty()) {
-            cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw("uses".equals(viewMode)
-                ? "No recipes use this item"
-                : "No recipes create this item"));
+        if (recipeIds.isEmpty()) {
+            cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw("No crafting recipes"));
             cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw(""));
             return;
         }
-        
-        // Pagination
-        int totalPages = (recipes.size() + RECIPES_PER_PAGE - 1) / RECIPES_PER_PAGE;
-        if (recipePage >= totalPages) recipePage = totalPages - 1;
-        if (recipePage < 0) recipePage = 0;
 
-        int start = recipePage * RECIPES_PER_PAGE;
-        int end = Math.min(start + RECIPES_PER_PAGE, recipes.size());
+        int totalPages = (int) Math.ceil((double) recipeIds.size() / RECIPES_PER_PAGE);
+        if (craftPage >= totalPages) craftPage = totalPages - 1;
+        if (craftPage < 0) craftPage = 0;
 
-        String modeText = "craft".equals(viewMode) ? "Craft" : "Uses";
-        cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw(modeText + " (" + recipes.size() + "):"));
-        cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw((recipePage + 1) + " / " + totalPages));
+        int start = craftPage * RECIPES_PER_PAGE;
+        int end = Math.min(start + RECIPES_PER_PAGE, recipeIds.size());
 
-        // Build recipe entries - use FULL PATH like Lumenia does
+        cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw("Craft (" + recipeIds.size() + "):"));
+        cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw((craftPage + 1) + " / " + totalPages));
+
         for (int i = start; i < end; i++) {
-            CraftingRecipe recipe = recipes.get(i);
-            int idx = i - start;
+            String recipeId = recipeIds.get(i);
+            CraftingRecipe recipe = JETPlugin.RECIPES.get(recipeId);
+            if (recipe == null) continue;
 
-            // Use append (not appendInline) with full path
+            int idx = i - start;
             cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
             String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
 
-            // Format recipe title
-            String recipeId = recipe.getId();
-            if (recipeId.contains(":")) recipeId = recipeId.substring(recipeId.indexOf(":") + 1);
+            buildRecipeDisplay(cmd, recipe, rSel);
+        }
+    }
 
-            // Add bench/station info to title
-            String benchInfo = "";
-            try {
-                Object benchReq = recipe.getBenchRequirement();
-                if (benchReq != null && benchReq.getClass().isArray()) {
-                    Object[] benches = (Object[]) benchReq;
-                    if (benches.length > 0) {
-                        Object bench = benches[0];
-                        try {
-                            java.lang.reflect.Method getIdMethod = bench.getClass().getMethod("getId");
-                            String benchId = (String) getIdMethod.invoke(bench);
-                            if (benchId != null && !benchId.isEmpty()) {
-                                benchInfo = " [" + formatBenchName(benchId) + "]";
-                            }
-                        } catch (Exception ignored) {}
-                    }
-                }
-            } catch (Exception ignored) {}
+    private void buildUsageSection(UICommandBuilder cmd, UIEventBuilder events, List<String> recipeIds) {
+        cmd.clear("#RecipePanel #RecipeListContainer #RecipeList");
 
-            cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(recipeId + benchInfo));
+        if (recipeIds.isEmpty()) {
+            cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw("Not used in recipes"));
+            cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw(""));
+            return;
+        }
 
-            // Add input items with quantities
-            List<MaterialQuantity> inputs = getRecipeInputs(recipe);
-            cmd.clear(rSel + " #InputItems");
-            if (!inputs.isEmpty()) {
-                for (int j = 0; j < inputs.size(); j++) {
-                    MaterialQuantity input = inputs.get(j);
-                    cmd.appendInline(rSel + " #InputItems",
-                        "Group { LayoutMode: Top; Padding: (Right: 6); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
-                    cmd.set(rSel + " #InputItems[" + j + "][0].ItemId", input.getItemId());
-                    cmd.set(rSel + " #InputItems[" + j + "][1].Text", "x" + input.getQuantity());
-                }
-            }
+        int totalPages = (int) Math.ceil((double) recipeIds.size() / RECIPES_PER_PAGE);
+        if (usagePage >= totalPages) usagePage = totalPages - 1;
+        if (usagePage < 0) usagePage = 0;
 
-            // Add output items with quantities
-            MaterialQuantity[] outputs = recipe.getOutputs();
-            cmd.clear(rSel + " #OutputItems");
-            if (outputs != null && outputs.length > 0) {
-                for (int j = 0; j < outputs.length; j++) {
-                    MaterialQuantity output = outputs[j];
-                    if (output != null && output.getItemId() != null) {
-                        cmd.appendInline(rSel + " #OutputItems",
+        int start = usagePage * RECIPES_PER_PAGE;
+        int end = Math.min(start + RECIPES_PER_PAGE, recipeIds.size());
+
+        cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw("Uses (" + recipeIds.size() + "):"));
+        cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw((usagePage + 1) + " / " + totalPages));
+
+        for (int i = start; i < end; i++) {
+            String recipeId = recipeIds.get(i);
+            CraftingRecipe recipe = JETPlugin.RECIPES.get(recipeId);
+            if (recipe == null) continue;
+
+            int idx = i - start;
+            cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
+            String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
+
+            buildRecipeDisplay(cmd, recipe, rSel);
+        }
+    }
+
+    private void buildRecipeDisplay(UICommandBuilder cmd, CraftingRecipe recipe, String rSel) {
+        String recipeId = recipe.getId();
+        if (recipeId.contains(":")) recipeId = recipeId.substring(recipeId.indexOf(":") + 1);
+
+        String benchInfo = "";
+        if (recipe.getBenchRequirement() != null && recipe.getBenchRequirement().length > 0) {
+            BenchRequirement bench = recipe.getBenchRequirement()[0];
+            benchInfo = " [" + formatBenchName(bench.id) + " T" + bench.requiredTierLevel + "]";
+        }
+
+        cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(recipeId + benchInfo));
+
+        // Add input items
+        List<MaterialQuantity> inputs = getRecipeInputs(recipe);
+        cmd.clear(rSel + " #InputItems");
+        for (int j = 0; j < inputs.size(); j++) {
+            MaterialQuantity input = inputs.get(j);
+            cmd.appendInline(rSel + " #InputItems",
+                    "Group { LayoutMode: Top; Padding: (Right: 6); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
+            cmd.set(rSel + " #InputItems[" + j + "][0].ItemId", input.getItemId());
+            cmd.set(rSel + " #InputItems[" + j + "][1].Text", "x" + input.getQuantity());
+        }
+
+        // Add output items
+        MaterialQuantity[] outputs = recipe.getOutputs();
+        cmd.clear(rSel + " #OutputItems");
+        if (outputs != null && outputs.length > 0) {
+            for (int j = 0; j < outputs.length; j++) {
+                MaterialQuantity output = outputs[j];
+                if (output != null && output.getItemId() != null) {
+                    cmd.appendInline(rSel + " #OutputItems",
                             "Group { LayoutMode: Top; Padding: (Right: 6); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
-                        cmd.set(rSel + " #OutputItems[" + j + "][0].ItemId", output.getItemId());
-                        cmd.set(rSel + " #OutputItems[" + j + "][1].Text", "x" + output.getQuantity());
-                    }
+                    cmd.set(rSel + " #OutputItems[" + j + "][0].ItemId", output.getItemId());
+                    cmd.set(rSel + " #OutputItems[" + j + "][1].Text", "x" + output.getQuantity());
                 }
             }
         }
@@ -296,11 +340,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
     private String formatBenchName(String benchId) {
         if (benchId == null) return "";
-        // Remove namespace
         if (benchId.contains(":")) benchId = benchId.substring(benchId.indexOf(":") + 1);
-        // Remove hytale_ prefix
         if (benchId.startsWith("hytale_")) benchId = benchId.substring(7);
-        // Convert to title case
         String[] parts = benchId.split("_");
         StringBuilder result = new StringBuilder();
         for (String part : parts) {
@@ -321,7 +362,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 }
             }
         } catch (Exception ignored) {}
-        
+
         String id = item.getId();
         if (id == null) return "Unknown";
         if (id.contains(":")) id = id.substring(id.indexOf(":") + 1);
@@ -329,7 +370,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         if (underscore > 0) id = id.substring(underscore + 1);
         return id.replace("_", " ");
     }
-    
+
     private Message buildTooltip(String itemId, Item item, String language) {
         StringBuilder sb = new StringBuilder();
         sb.append(getDisplayName(item, language)).append("\n");
@@ -348,37 +389,26 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     }
 
     private List<MaterialQuantity> getRecipeInputs(CraftingRecipe recipe) {
-        List<MaterialQuantity> result = new java.util.ArrayList<>();
+        List<MaterialQuantity> result = new ArrayList<>();
         Object inputsObj = null;
 
         // Try getInput method first
         try {
-            java.lang.reflect.Method getInputMethod = CraftingRecipe.class.getMethod("getInput");
+            Method getInputMethod = CraftingRecipe.class.getMethod("getInput");
             inputsObj = getInputMethod.invoke(recipe);
         } catch (Exception e) {
-            // Method doesn't exist or failed, try alternatives
-        }
-
-        // If getInput failed, try alternative methods
-        if (inputsObj == null) {
-            String[] methodNames = {
-                "getInputs",
-                "getIngredients",
-                "getMaterials",
-                "getRecipeInputs",
-                "getRequiredMaterials"
-            };
-
+            // Try alternatives
+            String[] methodNames = {"getInputs", "getIngredients", "getMaterials", "getRecipeInputs", "getRequiredMaterials"};
             for (String methodName : methodNames) {
                 try {
-                    java.lang.reflect.Method method = CraftingRecipe.class.getMethod(methodName);
+                    Method method = CraftingRecipe.class.getMethod(methodName);
                     inputsObj = method.invoke(recipe);
                     if (inputsObj != null) break;
                 } catch (Exception ignored) {}
             }
         }
 
-        // Process the inputs object (supports multiple types)
+        // Process inputs
         if (inputsObj != null) {
             if (inputsObj instanceof MaterialQuantity) {
                 MaterialQuantity input = (MaterialQuantity) inputsObj;
@@ -402,8 +432,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                         result.add(input);
                     }
                 }
-            } else if (inputsObj instanceof java.util.Collection) {
-                java.util.Collection<?> inputs = (java.util.Collection<?>) inputsObj;
+            } else if (inputsObj instanceof Collection) {
+                Collection<?> inputs = (Collection<?>) inputsObj;
                 for (Object obj : inputs) {
                     if (obj instanceof MaterialQuantity) {
                         MaterialQuantity input = (MaterialQuantity) obj;
@@ -417,22 +447,22 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
         return result;
     }
-    
+
     public static class GuiData {
         public static final BuilderCodec<GuiData> CODEC = BuilderCodec
-            .builder(GuiData.class, GuiData::new)
-            .addField(new KeyedCodec<>("@SearchQuery", Codec.STRING), (d, v) -> d.searchQuery = v, d -> d.searchQuery)
-            .addField(new KeyedCodec<>("SelectedItem", Codec.STRING), (d, v) -> d.selectedItem = v, d -> d.selectedItem)
-            .addField(new KeyedCodec<>("ViewMode", Codec.STRING), (d, v) -> d.viewMode = v, d -> d.viewMode)
-            .addField(new KeyedCodec<>("PageChange", Codec.STRING), (d, v) -> d.pageChange = v, d -> d.pageChange)
-            .addField(new KeyedCodec<>("ToggleMode", Codec.STRING), (d, v) -> d.toggleMode = v, d -> d.toggleMode)
-            .build();
+                .builder(GuiData.class, GuiData::new)
+                .addField(new KeyedCodec<>("@SearchQuery", Codec.STRING), (d, v) -> d.searchQuery = v, d -> d.searchQuery)
+                .addField(new KeyedCodec<>("SelectedItem", Codec.STRING), (d, v) -> d.selectedItem = v, d -> d.selectedItem)
+                .addField(new KeyedCodec<>("ActiveSection", Codec.STRING), (d, v) -> d.activeSection = v, d -> d.activeSection)
+                .addField(new KeyedCodec<>("CraftPageChange", Codec.STRING), (d, v) -> d.craftPageChange = v, d -> d.craftPageChange)
+                .addField(new KeyedCodec<>("UsagePageChange", Codec.STRING), (d, v) -> d.usagePageChange = v, d -> d.usagePageChange)
+                .build();
 
         private String searchQuery;
         private String selectedItem;
-        private String viewMode;
-        private String pageChange;
-        private String toggleMode;
+        private String activeSection;
+        private String craftPageChange;
+        private String usagePageChange;
 
         public GuiData() {}
     }
