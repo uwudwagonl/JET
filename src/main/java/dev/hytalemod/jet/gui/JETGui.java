@@ -52,25 +52,21 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     @Override
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Gui.ui");
-        cmd.set("#SearchInput.Value", searchQuery);
 
-        // Search input event
+        // TODO: Add search input binding once Common.ui is configured
+        // For now, search functionality is disabled to test recipe display
+
+        // Mode toggle button (keeping your original UI structure)
         events.addEventBinding(
-                CustomUIEventBindingType.ValueChanged,
-                "#SearchInput",
-                EventData.of("@SearchQuery", "#SearchInput.Value"),
+                CustomUIEventBindingType.Activating,
+                "#RecipePanel #ToggleModeButton",
+                EventData.of("ToggleMode", "toggle"),
                 false
         );
 
-        // Section toggle buttons
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#RecipePanel #SectionButtons #CraftButton", EventData.of("ActiveSection", "craft"), false);
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#RecipePanel #SectionButtons #UsageButton", EventData.of("ActiveSection", "usage"), false);
-
         // Pagination
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#PrevRecipe", EventData.of("CraftPageChange", "prev"), false);
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#NextRecipe", EventData.of("CraftPageChange", "next"), false);
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#PrevUsage", EventData.of("UsagePageChange", "prev"), false);
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#NextUsage", EventData.of("UsagePageChange", "next"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#PrevRecipe", EventData.of("PageChange", "prev"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#NextRecipe", EventData.of("PageChange", "next"), false);
 
         buildItemList(ref, cmd, events, store);
         buildRecipePanel(ref, cmd, events, store);
@@ -96,6 +92,14 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             needsRecipeUpdate = true;
         }
 
+        // Handle toggle mode (keeping your original behavior)
+        if (data.toggleMode != null && "toggle".equals(data.toggleMode)) {
+            this.activeSection = "craft".equals(this.activeSection) ? "usage" : "craft";
+            this.craftPage = 0;
+            this.usagePage = 0;
+            needsRecipeUpdate = true;
+        }
+
         if (data.activeSection != null && !data.activeSection.isEmpty() && !data.activeSection.equals(this.activeSection)) {
             this.activeSection = data.activeSection;
             this.craftPage = 0;
@@ -103,29 +107,28 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             needsRecipeUpdate = true;
         }
 
-        if (data.craftPageChange != null && "craft".equals(this.activeSection)) {
-            List<String> recipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(this.selectedItem, Collections.emptyList());
+        if (data.pageChange != null) {
+            List<String> recipeIds = "craft".equals(this.activeSection)
+                    ? JETPlugin.ITEM_TO_RECIPES.getOrDefault(this.selectedItem, Collections.emptyList())
+                    : JETPlugin.ITEM_FROM_RECIPES.getOrDefault(this.selectedItem, Collections.emptyList());
             int totalPages = (int) Math.ceil((double) recipeIds.size() / RECIPES_PER_PAGE);
 
-            if ("prev".equals(data.craftPageChange) && craftPage > 0) {
-                craftPage--;
-                needsRecipeUpdate = true;
-            } else if ("next".equals(data.craftPageChange) && craftPage < totalPages - 1) {
-                craftPage++;
-                needsRecipeUpdate = true;
-            }
-        }
-
-        if (data.usagePageChange != null && "usage".equals(this.activeSection)) {
-            List<String> recipeIds = JETPlugin.ITEM_FROM_RECIPES.getOrDefault(this.selectedItem, Collections.emptyList());
-            int totalPages = (int) Math.ceil((double) recipeIds.size() / RECIPES_PER_PAGE);
-
-            if ("prev".equals(data.usagePageChange) && usagePage > 0) {
-                usagePage--;
-                needsRecipeUpdate = true;
-            } else if ("next".equals(data.usagePageChange) && usagePage < totalPages - 1) {
-                usagePage++;
-                needsRecipeUpdate = true;
+            if ("prev".equals(data.pageChange)) {
+                if ("craft".equals(this.activeSection) && craftPage > 0) {
+                    craftPage--;
+                    needsRecipeUpdate = true;
+                } else if ("usage".equals(this.activeSection) && usagePage > 0) {
+                    usagePage--;
+                    needsRecipeUpdate = true;
+                }
+            } else if ("next".equals(data.pageChange)) {
+                if ("craft".equals(this.activeSection) && craftPage < totalPages - 1) {
+                    craftPage++;
+                    needsRecipeUpdate = true;
+                } else if ("usage".equals(this.activeSection) && usagePage < totalPages - 1) {
+                    usagePage++;
+                    needsRecipeUpdate = true;
+                }
             }
         }
 
@@ -454,15 +457,15 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("@SearchQuery", Codec.STRING), (d, v) -> d.searchQuery = v, d -> d.searchQuery)
                 .addField(new KeyedCodec<>("SelectedItem", Codec.STRING), (d, v) -> d.selectedItem = v, d -> d.selectedItem)
                 .addField(new KeyedCodec<>("ActiveSection", Codec.STRING), (d, v) -> d.activeSection = v, d -> d.activeSection)
-                .addField(new KeyedCodec<>("CraftPageChange", Codec.STRING), (d, v) -> d.craftPageChange = v, d -> d.craftPageChange)
-                .addField(new KeyedCodec<>("UsagePageChange", Codec.STRING), (d, v) -> d.usagePageChange = v, d -> d.usagePageChange)
+                .addField(new KeyedCodec<>("PageChange", Codec.STRING), (d, v) -> d.pageChange = v, d -> d.pageChange)
+                .addField(new KeyedCodec<>("ToggleMode", Codec.STRING), (d, v) -> d.toggleMode = v, d -> d.toggleMode)
                 .build();
 
         private String searchQuery;
         private String selectedItem;
         private String activeSection;
-        private String craftPageChange;
-        private String usagePageChange;
+        private String pageChange;
+        private String toggleMode;
 
         public GuiData() {}
     }
