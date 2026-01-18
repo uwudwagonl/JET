@@ -53,8 +53,13 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Gui.ui");
 
-        // TODO: Add search input binding once Common.ui is configured
-        // For now, search functionality is disabled to test recipe display
+        // Search bar binding - same as Lumenia uses
+        events.addEventBinding(
+                CustomUIEventBindingType.ValueChanged,
+                "#SearchInput",
+                EventData.of("@SearchQuery", "#SearchInput.Value"),
+                false
+        );
 
         // Mode toggle button (keeping your original UI structure)
         events.addEventBinding(
@@ -82,6 +87,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         if (data.searchQuery != null && !data.searchQuery.equals(this.searchQuery)) {
             this.searchQuery = data.searchQuery.trim();
             needsItemUpdate = true;
+            // Deselect item when search changes
+            this.selectedItem = null;
+            needsRecipeUpdate = true;
         }
 
         if (data.selectedItem != null && !data.selectedItem.isEmpty()) {
@@ -199,15 +207,83 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     }
 
     private boolean matchesSearch(String itemId, Item item) {
-        String query = searchQuery.toLowerCase();
+        String query = searchQuery.toLowerCase().trim();
         String language = playerRef.getLanguage();
 
-        // Check translated name
+        // Component filtering with # prefix (e.g., #tool, #food)
+        if (query.startsWith("#")) {
+            String componentTag = query.substring(1); // Remove the # prefix
+            return hasComponent(item, componentTag);
+        }
+
+        // Normal search: check translated name
         String translatedName = getDisplayName(item, language).toLowerCase();
         if (translatedName.contains(query)) return true;
 
         // Check item ID
         if (itemId.toLowerCase().contains(query)) return true;
+
+        return false;
+    }
+
+    private boolean hasComponent(Item item, String componentTag) {
+        if (item == null || componentTag == null || componentTag.isEmpty()) {
+            return false;
+        }
+
+        // Check item ID - many items have their type in the ID (e.g., Weapon_Sword, Tool_Pickaxe, Food_Apple)
+        try {
+            Method getIdMethod = Item.class.getMethod("getId");
+            Object idObj = getIdMethod.invoke(item);
+            if (idObj != null) {
+                String itemId = idObj.toString().toLowerCase();
+                if (itemId.contains(componentTag.toLowerCase())) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            // Try getItemType() which returns the item's type category
+            Method getItemTypeMethod = Item.class.getMethod("getItemType");
+            Object itemType = getItemTypeMethod.invoke(item);
+            if (itemType != null) {
+                String itemTypeStr = itemType.toString().toLowerCase();
+                if (itemTypeStr.contains(componentTag.toLowerCase())) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            // Try to get components/tags via getComponents
+            Method getComponentsMethod = Item.class.getMethod("getComponents");
+            Object components = getComponentsMethod.invoke(item);
+            if (components != null) {
+                String componentsStr = components.toString().toLowerCase();
+                if (componentsStr.contains(componentTag.toLowerCase())) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            // Try hasComponent method
+            Method hasComponentMethod = Item.class.getMethod("hasComponent", String.class);
+            Object result = hasComponentMethod.invoke(item, componentTag);
+            if (result instanceof Boolean && (Boolean) result) {
+                return true;
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            // Try getComponent method
+            Method getComponentMethod = Item.class.getMethod("getComponent", String.class);
+            Object component = getComponentMethod.invoke(item, componentTag);
+            if (component != null) {
+                return true;
+            }
+        } catch (Exception ignored) {}
 
         return false;
     }

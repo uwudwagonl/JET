@@ -32,7 +32,9 @@ public class RecipeRegistry {
 
         // DEBUG: List all methods on CraftingRecipe
         try {
-            java.io.FileWriter methodsFile = new java.io.FileWriter("C:\\Users\\benja\\AppData\\Roaming\\Hytale\\UserData\\Logs\\JET_methods.txt");
+            java.nio.file.Path logsDir = java.nio.file.Paths.get(System.getProperty("user.home"), "AppData", "Roaming", "Hytale", "UserData", "Logs");
+            java.nio.file.Files.createDirectories(logsDir);
+            java.io.FileWriter methodsFile = new java.io.FileWriter(logsDir.resolve("JET_methods.txt").toFile());
             methodsFile.write("=== All CraftingRecipe Methods ===\n");
             java.lang.reflect.Method[] methods = CraftingRecipe.class.getMethods();
             for (java.lang.reflect.Method m : methods) {
@@ -99,7 +101,9 @@ public class RecipeRegistry {
 
         // Write debug info to file
         try {
-            java.io.FileWriter fw = new java.io.FileWriter("C:\\Users\\benja\\AppData\\Roaming\\Hytale\\UserData\\Logs\\JET_debug.txt");
+            java.nio.file.Path logsDir = java.nio.file.Paths.get(System.getProperty("user.home"), "AppData", "Roaming", "Hytale", "UserData", "Logs");
+            java.nio.file.Files.createDirectories(logsDir);
+            java.io.FileWriter fw = new java.io.FileWriter(logsDir.resolve("JET_debug.txt").toFile());
             fw.write("=== JET Recipe Registry Debug ===\n");
             fw.write("Total recipes: " + recipes.size() + "\n");
             fw.write("Items with crafting recipes: " + craftingRecipes.size() + "\n");
@@ -135,6 +139,35 @@ public class RecipeRegistry {
                     fw.write("  CRAFT: " + key + ": " + craftingRecipes.get(key).size() + " recipes\n");
                 }
             }
+
+            // Debug specific recipes
+            fw.write("\nDEBUG: Checking specific recipe inputs:\n");
+            CraftingRecipe arcanebench = recipes.get("hytale:Arcanebench");
+            if (arcanebench != null) {
+                fw.write("Found Arcanebench recipe\n");
+                try {
+                    Object inputs = getInputMethod.invoke(arcanebench);
+                    if (inputs == null) {
+                        fw.write("  getInput() returned null\n");
+                    } else if (inputs instanceof MaterialQuantity[]) {
+                        MaterialQuantity[] arr = (MaterialQuantity[]) inputs;
+                        fw.write("  getInput() returned array of length: " + arr.length + "\n");
+                        for (int i = 0; i < arr.length; i++) {
+                            MaterialQuantity mq = arr[i];
+                            if (mq != null) {
+                                fw.write("    [" + i + "] " + mq.getItemId() + " x" + mq.getQuantity() + "\n");
+                            }
+                        }
+                    } else {
+                        fw.write("  getInput() returned unexpected type: " + inputs.getClass().getName() + "\n");
+                    }
+                } catch (Exception ex) {
+                    fw.write("  Error calling getInput(): " + ex.getMessage() + "\n");
+                }
+            } else {
+                fw.write("Arcanebench recipe not found\n");
+            }
+
             fw.close();
         } catch (Exception e) {
             JETPlugin.getInstance().getLogger().at(Level.WARNING).log("[JET] Failed to write debug file: " + e.getMessage());
@@ -149,7 +182,18 @@ public class RecipeRegistry {
         if (getInputMethod != null) {
             try {
                 inputsObj = getInputMethod.invoke(recipe);
-                if (inputsObj != null) successMethod = "getInput";
+                // Check if it's a non-empty array (getInput() returns MaterialQuantity[])
+                if (inputsObj != null) {
+                    if (inputsObj instanceof MaterialQuantity[] && ((MaterialQuantity[]) inputsObj).length > 0) {
+                        successMethod = "getInput";
+                    } else if (!(inputsObj instanceof MaterialQuantity[])) {
+                        // It's not an array but something else, keep it
+                        successMethod = "getInput";
+                    } else {
+                        // It's an empty array, treat as null
+                        inputsObj = null;
+                    }
+                }
             } catch (Exception e) {
                 // Method exists but failed, try alternatives
             }
