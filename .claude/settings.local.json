@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(.gradlew clean build:*)"
+      "Bash(.gradlew clean build:*)",
+      "Bash(./gradlew.bat clean:*)",
+      "Bash(set JAVA_HOME=C:Program FilesJavajdk-21)",
+      "Bash(export JAVA_HOME=\"C:\\\\Program Files\\\\Java\\\\jdk-21\")",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
+      "Bash(du:*)",
+      "Bash(find:*)",
+      "Bash(unzip:*)"
     ]
   }
 }

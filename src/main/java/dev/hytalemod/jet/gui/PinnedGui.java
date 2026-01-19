@@ -54,11 +54,19 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         // Hide search bar - users can see all pinned items at once
         cmd.set("#SearchInput.Visible", false);
 
-        // Mode toggle button
+        // Toggle mode button - switches to craft mode
         events.addEventBinding(
                 CustomUIEventBindingType.Activating,
                 "#RecipePanel #ToggleModeButton",
-                EventData.of("ToggleMode", "toggle"),
+                EventData.of("ToggleMode", "craft"),
+                false
+        );
+
+        // Uses button - switches to usage mode
+        events.addEventBinding(
+                CustomUIEventBindingType.Activating,
+                "#RecipePanel #UsesButton",
+                EventData.of("ToggleMode", "usage"),
                 false
         );
 
@@ -93,12 +101,14 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
             needsRecipeUpdate = true;
         }
 
-        // Handle toggle mode
-        if (data.toggleMode != null && "toggle".equals(data.toggleMode)) {
-            this.activeSection = "craft".equals(this.activeSection) ? "usage" : "craft";
-            this.craftPage = 0;
-            this.usagePage = 0;
-            needsRecipeUpdate = true;
+        // Handle toggle mode - now separate buttons for craft/usage
+        if (data.toggleMode != null && !data.toggleMode.isEmpty()) {
+            if ("craft".equals(data.toggleMode) || "usage".equals(data.toggleMode)) {
+                this.activeSection = data.toggleMode;
+                this.craftPage = 0;
+                this.usagePage = 0;
+                needsRecipeUpdate = true;
+            }
         }
 
         if (data.activeSection != null && !data.activeSection.isEmpty() && !data.activeSection.equals(this.activeSection)) {
@@ -256,14 +266,18 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         cmd.set("#RecipePanel #SelectedIcon.ItemId", selectedItem);
         cmd.set("#RecipePanel #SelectedName.TextSpans", Message.raw(getDisplayName(item, language)));
 
+        // Get recipe IDs from global maps
+        List<String> craftRecipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(selectedItem, Collections.emptyList());
+        List<String> usageRecipeIds = JETPlugin.ITEM_FROM_RECIPES.getOrDefault(selectedItem, Collections.emptyList());
+
+        // Set recipe info label
+        String recipeInfo = "Craft: " + craftRecipeIds.size() + " | Uses: " + usageRecipeIds.size();
+        cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw(recipeInfo));
+
         // Update pin button text based on current pin status
         UUID playerUuid = playerRef.getUuid();
         boolean isPinned = JETPlugin.getInstance().getPinnedItemsStorage().isPinned(playerUuid, selectedItem);
         cmd.set("#RecipePanel #PinButton.Text", isPinned ? "Unpin" : "Pin");
-
-        // Get recipe IDs from global maps like Lumenia
-        List<String> craftRecipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(selectedItem, Collections.emptyList());
-        List<String> usageRecipeIds = JETPlugin.ITEM_FROM_RECIPES.getOrDefault(selectedItem, Collections.emptyList());
 
         if ("craft".equals(activeSection)) {
             buildCraftSection(cmd, events, craftRecipeIds);
@@ -276,8 +290,7 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         cmd.clear("#RecipePanel #RecipeListContainer #RecipeList");
 
         if (recipeIds.isEmpty()) {
-            cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw("No crafting recipes"));
-            cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw(""));
+            cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw("No recipes"));
             return;
         }
 
@@ -288,7 +301,6 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         int start = craftPage * RECIPES_PER_PAGE;
         int end = Math.min(start + RECIPES_PER_PAGE, recipeIds.size());
 
-        cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw("Craft (" + recipeIds.size() + "):"));
         cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw((craftPage + 1) + " / " + totalPages));
 
         for (int i = start; i < end; i++) {
@@ -308,8 +320,7 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         cmd.clear("#RecipePanel #RecipeListContainer #RecipeList");
 
         if (recipeIds.isEmpty()) {
-            cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw("Not used in recipes"));
-            cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw(""));
+            cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw("No recipes"));
             return;
         }
 
@@ -320,7 +331,6 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         int start = usagePage * RECIPES_PER_PAGE;
         int end = Math.min(start + RECIPES_PER_PAGE, recipeIds.size());
 
-        cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw("Uses (" + recipeIds.size() + "):"));
         cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw((usagePage + 1) + " / " + totalPages));
 
         for (int i = start; i < end; i++) {
@@ -471,21 +481,21 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
     private Message buildTooltip(String itemId, Item item, String language) {
         StringBuilder sb = new StringBuilder();
 
-        // Title with star
-        sb.append("★ ").append(getDisplayName(item, language)).append(" ★\n");
-        sb.append("═══════════════════════\n");
+        // Title with decorative border
+        sb.append("=== ").append(getDisplayName(item, language)).append(" ===\n");
+        sb.append("-------------------\n");
 
         // Item details
-        sb.append("📋 ID: ").append(itemId).append("\n");
-        sb.append("📦 Stack: ").append(item.getMaxStack());
+        sb.append("ID: ").append(itemId).append("\n");
+        sb.append("Stack: ").append(item.getMaxStack());
 
         if (item.getMaxDurability() > 0) {
-            sb.append("\n⚒ Durability: ").append((int)item.getMaxDurability());
+            sb.append("\nDurability: ").append((int)item.getMaxDurability());
         }
 
-        sb.append("\n═══════════════════════");
-        sb.append("\n💛 PINNED ITEM");
-        sb.append("\n👆 Click to view recipes");
+        sb.append("\n-------------------");
+        sb.append("\n[PINNED ITEM]");
+        sb.append("\nClick to view recipes");
 
         return Message.raw(sb.toString());
     }
