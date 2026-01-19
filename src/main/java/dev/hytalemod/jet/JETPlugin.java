@@ -12,8 +12,10 @@ import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import dev.hytalemod.jet.command.JETCommand;
 import dev.hytalemod.jet.command.JETInfoCommand;
 import dev.hytalemod.jet.command.JETListCommand;
+import dev.hytalemod.jet.command.PinnedCommand;
 import dev.hytalemod.jet.input.JETKeybindHandler;
 import dev.hytalemod.jet.registry.ItemRegistry;
+import dev.hytalemod.jet.registry.PinManager;
 import dev.hytalemod.jet.registry.RecipeRegistry;
 
 import java.lang.reflect.Method;
@@ -35,6 +37,7 @@ public class JETPlugin extends JavaPlugin {
     private static JETPlugin instance;
     private ItemRegistry itemRegistry;
     private RecipeRegistry recipeRegistry;
+    private PinManager pinManager;
 
     // Global recipe maps like Lumenia
     public static Map<String, Item> ITEMS = new HashMap<>();
@@ -53,11 +56,13 @@ public class JETPlugin extends JavaPlugin {
         instance = this;
         itemRegistry = new ItemRegistry();
         recipeRegistry = new RecipeRegistry();
+        pinManager = new PinManager(getLogger(), getDataFolder());
 
         // Register commands
         getCommandRegistry().registerCommand(new JETCommand());
         getCommandRegistry().registerCommand(new JETInfoCommand());
         getCommandRegistry().registerCommand(new JETListCommand());
+        getCommandRegistry().registerCommand(new PinnedCommand());
 
         // Register mouse button event for keybind toggle
         getEventRegistry().registerGlobal(PlayerMouseButtonEvent.class, event -> {
@@ -190,5 +195,9 @@ public class JETPlugin extends JavaPlugin {
 
     public RecipeRegistry getRecipeRegistry() {
         return recipeRegistry;
+    }
+
+    public PinManager getPinManager() {
+        return pinManager;
     }
 }

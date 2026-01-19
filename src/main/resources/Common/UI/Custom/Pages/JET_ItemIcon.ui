@@ -25,4 +25,26 @@ Button {
     );
     Anchor: (Bottom: 5);
   }
+
+  Button #PinButton {
+    Anchor: (Width: 24, Height: 24, Top: 2, Right: 2);
+    Background: (Color: #000000(0.5));
+    Padding: (Full: 4);
+    Style: (
+      Hovered: (
+        Background: #ffd700(0.8),
+      ),
+      Pressed: (
+        Background: #ffd700(1.0),
+      )
+    );
+
+    Label #PinIcon {
+      Style: (
+        FontSize: 16,
+        RenderBold: true,
+        TextColor: #ffffff
+      );
+    }
+  }
 }
