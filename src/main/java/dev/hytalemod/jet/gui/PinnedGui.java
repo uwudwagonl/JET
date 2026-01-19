@@ -25,24 +25,22 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 /**
- * JET Browser GUI with item browsing, recipes, and uses.
+ * GUI for viewing and managing pinned/favorited items
  */
-public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
+public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
 
     private static final int ITEMS_PER_ROW = 7;
     private static final int MAX_ROWS = 8;
     private static final int MAX_ITEMS = ITEMS_PER_ROW * MAX_ROWS;
     private static final int RECIPES_PER_PAGE = 3;
 
-    private String searchQuery;
     private String selectedItem;
     private String activeSection; // "craft" or "usage"
     private int craftPage;
     private int usagePage;
 
-    public JETGui(PlayerRef playerRef, CustomPageLifetime lifetime, String initialSearch) {
+    public PinnedGui(PlayerRef playerRef, CustomPageLifetime lifetime) {
         super(playerRef, lifetime, GuiData.CODEC);
-        this.searchQuery = initialSearch != null ? initialSearch : "";
         this.selectedItem = null;
         this.activeSection = "craft";
         this.craftPage = 0;
@@ -53,15 +51,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Gui.ui");
 
-        // Search bar binding - same as Lumenia uses
-        events.addEventBinding(
-                CustomUIEventBindingType.ValueChanged,
-                "#SearchInput",
-                EventData.of("@SearchQuery", "#SearchInput.Value"),
-                false
-        );
+        // Hide search bar - users can see all pinned items at once
+        cmd.set("#SearchInput.Visible", false);
 
-        // Mode toggle button (keeping your original UI structure)
+        // Mode toggle button
         events.addEventBinding(
                 CustomUIEventBindingType.Activating,
                 "#RecipePanel #ToggleModeButton",
@@ -81,7 +74,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         events.addEventBinding(CustomUIEventBindingType.Activating, "#PrevRecipe", EventData.of("PageChange", "prev"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#NextRecipe", EventData.of("PageChange", "next"), false);
 
-        buildItemList(ref, cmd, events, store);
+        buildPinnedItemsList(ref, cmd, events, store);
         buildRecipePanel(ref, cmd, events, store);
     }
 
@@ -92,14 +85,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         boolean needsItemUpdate = false;
         boolean needsRecipeUpdate = false;
 
-        if (data.searchQuery != null && !data.searchQuery.equals(this.searchQuery)) {
-            this.searchQuery = data.searchQuery.trim();
-            needsItemUpdate = true;
-            // Deselect item when search changes
-            this.selectedItem = null;
-            needsRecipeUpdate = true;
-        }
-
         if (data.selectedItem != null && !data.selectedItem.isEmpty()) {
             this.selectedItem = data.selectedItem;
             this.craftPage = 0;
@@ -108,7 +93,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             needsRecipeUpdate = true;
         }
 
-        // Handle toggle mode (keeping your original behavior)
+        // Handle toggle mode
         if (data.toggleMode != null && "toggle".equals(data.toggleMode)) {
             this.activeSection = "craft".equals(this.activeSection) ? "usage" : "craft";
             this.craftPage = 0;
@@ -128,6 +113,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             UUID playerUuid = playerRef.getUuid();
             boolean isPinned = JETPlugin.getInstance().getPinnedItemsStorage().togglePin(playerUuid, this.selectedItem);
             needsRecipeUpdate = true;
+            // If item was unpinned, also refresh the item list
+            if (!isPinned) {
+                needsItemUpdate = true;
+            }
         }
 
         if (data.pageChange != null) {
@@ -160,7 +149,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             UIEventBuilder events = new UIEventBuilder();
 
             if (needsItemUpdate) {
-                buildItemList(ref, cmd, events, store);
+                buildPinnedItemsList(ref, cmd, events, store);
             }
             if (needsRecipeUpdate) {
                 buildRecipePanel(ref, cmd, events, store);
@@ -170,29 +159,60 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
     }
 
-    private void buildItemList(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
-        List<Map.Entry<String, Item>> results = new ArrayList<>();
-
-        // Use global ITEMS map like Lumenia
-        for (Map.Entry<String, Item> entry : JETPlugin.ITEMS.entrySet()) {
-            if (searchQuery.isEmpty() || matchesSearch(entry.getKey(), entry.getValue())) {
-                results.add(entry);
-            }
-        }
-
+    private void buildPinnedItemsList(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.clear("#ItemCards");
 
+        UUID playerUuid = playerRef.getUuid();
+        Set<String> pinnedItemIds = JETPlugin.getInstance().getPinnedItemsStorage().getPinnedItems(playerUuid);
+
+        if (pinnedItemIds.isEmpty()) {
+            // Show empty state message with better styling
+            cmd.appendInline("#ItemCards", "Group { LayoutMode: Top; Padding: (Full: 30); Anchor: (Width: 100%); }");
+
+            // Star icon placeholder (using text)
+            cmd.appendInline("#ItemCards[0]",
+                "Label { Style: (FontSize: 48, TextColor: #ffaa00, HorizontalAlignment: Center); Padding: (Top: 60); }");
+            cmd.set("#ItemCards[0][0].Text", "★");
+
+            // Main message
+            cmd.appendInline("#ItemCards[0]",
+                "Label { Style: (FontSize: 18, TextColor: #ffffff, HorizontalAlignment: Center, RenderBold: true); Padding: (Top: 20); }");
+            cmd.set("#ItemCards[0][1].Text", "No Pinned Items Yet");
+
+            // Subtitle
+            cmd.appendInline("#ItemCards[0]",
+                "Label { Style: (FontSize: 13, TextColor: #aaaaaa, HorizontalAlignment: Center); Padding: (Top: 10); }");
+            cmd.set("#ItemCards[0][2].Text", "Browse items with /jet and click the Pin button");
+
+            // Hint
+            cmd.appendInline("#ItemCards[0]",
+                "Label { Style: (FontSize: 11, TextColor: #777777, HorizontalAlignment: Center); Padding: (Top: 8); }");
+            cmd.set("#ItemCards[0][3].Text", "to save your favorites here!");
+
+            return;
+        }
+
         String language = playerRef.getLanguage();
+        List<String> sortedItems = new ArrayList<>(pinnedItemIds);
+
+        // Sort alphabetically by display name
+        sortedItems.sort((a, b) -> {
+            Item itemA = JETPlugin.ITEMS.get(a);
+            Item itemB = JETPlugin.ITEMS.get(b);
+            String nameA = getDisplayName(itemA, language);
+            String nameB = getDisplayName(itemB, language);
+            return nameA.compareToIgnoreCase(nameB);
+        });
 
         int row = 0;
         int col = 0;
         int count = 0;
 
-        for (Map.Entry<String, Item> entry : results) {
+        for (String itemId : sortedItems) {
             if (count >= MAX_ITEMS) break;
 
-            String key = entry.getKey();
-            Item item = entry.getValue();
+            Item item = JETPlugin.ITEMS.get(itemId);
+            if (item == null) continue;
 
             if (col == 0) {
                 cmd.appendInline("#ItemCards", "Group { LayoutMode: Left; Anchor: (Bottom: 0); }");
@@ -201,16 +221,16 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             cmd.append("#ItemCards[" + row + "]", "Pages/JET_ItemIcon.ui");
             String sel = "#ItemCards[" + row + "][" + col + "]";
 
-            cmd.set(sel + " #ItemIcon.ItemId", key);
+            cmd.set(sel + " #ItemIcon.ItemId", itemId);
 
             String displayName = getDisplayName(item, language);
             if (displayName.length() > 14) {
                 displayName = displayName.substring(0, 12) + "...";
             }
             cmd.set(sel + " #ItemName.TextSpans", Message.raw(displayName));
-            cmd.set(sel + ".TooltipTextSpans", buildTooltip(key, item, language));
+            cmd.set(sel + ".TooltipTextSpans", buildTooltip(itemId, item, language));
 
-            events.addEventBinding(CustomUIEventBindingType.Activating, sel, EventData.of("SelectedItem", key), false);
+            events.addEventBinding(CustomUIEventBindingType.Activating, sel, EventData.of("SelectedItem", itemId), false);
 
             col++;
             if (col >= ITEMS_PER_ROW) {
@@ -219,88 +239,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
             count++;
         }
-    }
-
-    private boolean matchesSearch(String itemId, Item item) {
-        String query = searchQuery.toLowerCase().trim();
-        String language = playerRef.getLanguage();
-
-        // Component filtering with # prefix (e.g., #tool, #food)
-        if (query.startsWith("#")) {
-            String componentTag = query.substring(1); // Remove the # prefix
-            return hasComponent(item, componentTag);
-        }
-
-        // Normal search: check translated name
-        String translatedName = getDisplayName(item, language).toLowerCase();
-        if (translatedName.contains(query)) return true;
-
-        // Check item ID
-        if (itemId.toLowerCase().contains(query)) return true;
-
-        return false;
-    }
-
-    private boolean hasComponent(Item item, String componentTag) {
-        if (item == null || componentTag == null || componentTag.isEmpty()) {
-            return false;
-        }
-
-        // Check item ID - many items have their type in the ID (e.g., Weapon_Sword, Tool_Pickaxe, Food_Apple)
-        try {
-            Method getIdMethod = Item.class.getMethod("getId");
-            Object idObj = getIdMethod.invoke(item);
-            if (idObj != null) {
-                String itemId = idObj.toString().toLowerCase();
-                if (itemId.contains(componentTag.toLowerCase())) {
-                    return true;
-                }
-            }
-        } catch (Exception ignored) {}
-
-        try {
-            // Try getItemType() which returns the item's type category
-            Method getItemTypeMethod = Item.class.getMethod("getItemType");
-            Object itemType = getItemTypeMethod.invoke(item);
-            if (itemType != null) {
-                String itemTypeStr = itemType.toString().toLowerCase();
-                if (itemTypeStr.contains(componentTag.toLowerCase())) {
-                    return true;
-                }
-            }
-        } catch (Exception ignored) {}
-
-        try {
-            // Try to get components/tags via getComponents
-            Method getComponentsMethod = Item.class.getMethod("getComponents");
-            Object components = getComponentsMethod.invoke(item);
-            if (components != null) {
-                String componentsStr = components.toString().toLowerCase();
-                if (componentsStr.contains(componentTag.toLowerCase())) {
-                    return true;
-                }
-            }
-        } catch (Exception ignored) {}
-
-        try {
-            // Try hasComponent method
-            Method hasComponentMethod = Item.class.getMethod("hasComponent", String.class);
-            Object result = hasComponentMethod.invoke(item, componentTag);
-            if (result instanceof Boolean && (Boolean) result) {
-                return true;
-            }
-        } catch (Exception ignored) {}
-
-        try {
-            // Try getComponent method
-            Method getComponentMethod = Item.class.getMethod("getComponent", String.class);
-            Object component = getComponentMethod.invoke(item, componentTag);
-            if (component != null) {
-                return true;
-            }
-        } catch (Exception ignored) {}
-
-        return false;
     }
 
     private void buildRecipePanel(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
@@ -450,43 +388,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         return result.toString();
     }
 
-    private String getDisplayName(Item item, String language) {
-        if (item == null) return "Unknown";
-        try {
-            String key = item.getTranslationKey();
-            if (key != null) {
-                String translated = I18nModule.get().getMessage(language, key);
-                if (translated != null && !translated.isEmpty()) {
-                    return translated;
-                }
-            }
-        } catch (Exception ignored) {}
-
-        String id = item.getId();
-        if (id == null) return "Unknown";
-        if (id.contains(":")) id = id.substring(id.indexOf(":") + 1);
-        int underscore = id.indexOf("_");
-        if (underscore > 0) id = id.substring(underscore + 1);
-        return id.replace("_", " ");
-    }
-
-    private Message buildTooltip(String itemId, Item item, String language) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(getDisplayName(item, language)).append("\n");
-        sb.append("-------------------\n");
-        sb.append("ID: ").append(itemId).append("\n");
-        sb.append("Stack: ").append(item.getMaxStack());
-
-        if (item.getMaxDurability() > 0) {
-            sb.append("\nDurability: ").append((int)item.getMaxDurability());
-        }
-
-        sb.append("\n-------------------");
-        sb.append("\nClick to view recipes");
-
-        return Message.raw(sb.toString());
-    }
-
     private List<MaterialQuantity> getRecipeInputs(CraftingRecipe recipe) {
         List<MaterialQuantity> result = new ArrayList<>();
         Object inputsObj = null;
@@ -547,10 +448,51 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         return result;
     }
 
+    private String getDisplayName(Item item, String language) {
+        if (item == null) return "Unknown";
+        try {
+            String key = item.getTranslationKey();
+            if (key != null) {
+                String translated = I18nModule.get().getMessage(language, key);
+                if (translated != null && !translated.isEmpty()) {
+                    return translated;
+                }
+            }
+        } catch (Exception ignored) {}
+
+        String id = item.getId();
+        if (id == null) return "Unknown";
+        if (id.contains(":")) id = id.substring(id.indexOf(":") + 1);
+        int underscore = id.indexOf("_");
+        if (underscore > 0) id = id.substring(underscore + 1);
+        return id.replace("_", " ");
+    }
+
+    private Message buildTooltip(String itemId, Item item, String language) {
+        StringBuilder sb = new StringBuilder();
+
+        // Title with star
+        sb.append("★ ").append(getDisplayName(item, language)).append(" ★\n");
+        sb.append("═══════════════════════\n");
+
+        // Item details
+        sb.append("📋 ID: ").append(itemId).append("\n");
+        sb.append("📦 Stack: ").append(item.getMaxStack());
+
+        if (item.getMaxDurability() > 0) {
+            sb.append("\n⚒ Durability: ").append((int)item.getMaxDurability());
+        }
+
+        sb.append("\n═══════════════════════");
+        sb.append("\n💛 PINNED ITEM");
+        sb.append("\n👆 Click to view recipes");
+
+        return Message.raw(sb.toString());
+    }
+
     public static class GuiData {
         public static final BuilderCodec<GuiData> CODEC = BuilderCodec
                 .builder(GuiData.class, GuiData::new)
-                .addField(new KeyedCodec<>("@SearchQuery", Codec.STRING), (d, v) -> d.searchQuery = v, d -> d.searchQuery)
                 .addField(new KeyedCodec<>("SelectedItem", Codec.STRING), (d, v) -> d.selectedItem = v, d -> d.selectedItem)
                 .addField(new KeyedCodec<>("ActiveSection", Codec.STRING), (d, v) -> d.activeSection = v, d -> d.activeSection)
                 .addField(new KeyedCodec<>("PageChange", Codec.STRING), (d, v) -> d.pageChange = v, d -> d.pageChange)
@@ -558,7 +500,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("PinAction", Codec.STRING), (d, v) -> d.pinAction = v, d -> d.pinAction)
                 .build();
 
-        private String searchQuery;
         private String selectedItem;
         private String activeSection;
         private String pageChange;

@@ -58,6 +58,19 @@ $C.@PageOverlay {
             Padding: (Left: 10);
             FlexWeight: 1;
           }
+
+          TextButton #PinButton {
+            Anchor: (Width: 80, Height: 32);
+            Text: "Pin";
+            Style: TextButtonStyle(
+              Default: (LabelStyle: (FontSize: 11, TextColor: #ffffff)),
+              Hovered: (Background: #3a3a3a(0.8)),
+              Pressed: (Background: #4a4a4a(0.9)),
+              Sounds: $C.@ButtonSounds
+            );
+            Background: #2a2a2a(0.7);
+            Padding: (Full: 4);
+          }
         }
 
         Group #ModeToggle {
