@@ -5,7 +5,6 @@ import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
-import com.hypixel.hytale.protocol.BenchRequirement;
 import com.hypixel.hytale.protocol.packets.interface_.CustomPageLifetime;
 import com.hypixel.hytale.protocol.packets.interface_.CustomUIEventBindingType;
 import com.hypixel.hytale.server.core.Message;
@@ -25,24 +24,22 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 /**
- * JET Browser GUI with item browsing, recipes, and uses.
+ * Pinned/Favorited Items GUI
  */
-public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
+public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
 
     private static final int ITEMS_PER_ROW = 7;
     private static final int MAX_ROWS = 8;
     private static final int MAX_ITEMS = ITEMS_PER_ROW * MAX_ROWS;
     private static final int RECIPES_PER_PAGE = 3;
 
-    private String searchQuery;
     private String selectedItem;
-    private String activeSection; // "craft" or "usage"
+    private String activeSection;
     private int craftPage;
     private int usagePage;
 
-    public JETGui(PlayerRef playerRef, CustomPageLifetime lifetime, String initialSearch) {
+    public PinnedGui(PlayerRef playerRef, CustomPageLifetime lifetime) {
         super(playerRef, lifetime, GuiData.CODEC);
-        this.searchQuery = initialSearch != null ? initialSearch : "";
         this.selectedItem = null;
         this.activeSection = "craft";
         this.craftPage = 0;
@@ -53,15 +50,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Gui.ui");
 
-        // Search bar binding - same as Lumenia uses
-        events.addEventBinding(
-                CustomUIEventBindingType.ValueChanged,
-                "#SearchInput",
-                EventData.of("@SearchQuery", "#SearchInput.Value"),
-                false
-        );
+        // Hide search bar for pinned items view
+        cmd.set("#SearchInput.Visible", false);
 
-        // Mode toggle button (keeping your original UI structure)
+        // Mode toggle button
         events.addEventBinding(
                 CustomUIEventBindingType.Activating,
                 "#RecipePanel #ToggleModeButton",
@@ -84,14 +76,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         boolean needsItemUpdate = false;
         boolean needsRecipeUpdate = false;
 
-        if (data.searchQuery != null && !data.searchQuery.equals(this.searchQuery)) {
-            this.searchQuery = data.searchQuery.trim();
-            needsItemUpdate = true;
-            // Deselect item when search changes
-            this.selectedItem = null;
-            needsRecipeUpdate = true;
-        }
-
         if (data.selectedItem != null && !data.selectedItem.isEmpty()) {
             this.selectedItem = data.selectedItem;
             this.craftPage = 0;
@@ -100,7 +84,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             needsRecipeUpdate = true;
         }
 
-        // Handle toggle mode (keeping your original behavior)
         if (data.toggleMode != null && "toggle".equals(data.toggleMode)) {
             this.activeSection = "craft".equals(this.activeSection) ? "usage" : "craft";
             this.craftPage = 0;
@@ -143,8 +126,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         // Handle pin toggle
         if (data.pinToggle != null && !data.pinToggle.isEmpty()) {
             UUID playerId = playerRef.getUuid();
-            boolean isPinned = JETPlugin.getInstance().getPinManager().togglePin(playerId, data.pinToggle);
-            needsItemUpdate = true; // Refresh item list to update pin icon
+            JETPlugin.getInstance().getPinManager().togglePin(playerId, data.pinToggle);
+            needsItemUpdate = true; // Refresh to remove unpinned items
         }
 
         if (needsItemUpdate || needsRecipeUpdate) {
@@ -163,16 +146,17 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     }
 
     private void buildItemList(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
-        List<Map.Entry<String, Item>> results = new ArrayList<>();
-
-        // Use global ITEMS map like Lumenia
-        for (Map.Entry<String, Item> entry : JETPlugin.ITEMS.entrySet()) {
-            if (searchQuery.isEmpty() || matchesSearch(entry.getKey(), entry.getValue())) {
-                results.add(entry);
-            }
-        }
-
         cmd.clear("#ItemCards");
+
+        UUID playerId = playerRef.getUuid();
+        List<String> pinnedItemIds = JETPlugin.getInstance().getPinManager().getPinnedItems(playerId);
+
+        if (pinnedItemIds.isEmpty()) {
+            // Show "No pinned items" message
+            cmd.appendInline("#ItemCards", "Label { Style: (FontSize: 18, TextColor: #ffffff); }");
+            cmd.set("#ItemCards[0].TextSpans", Message.raw("No pinned items yet!\nPin items from the main browser."));
+            return;
+        }
 
         String language = playerRef.getLanguage();
 
@@ -180,11 +164,11 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         int col = 0;
         int count = 0;
 
-        for (Map.Entry<String, Item> entry : results) {
+        for (String itemId : pinnedItemIds) {
             if (count >= MAX_ITEMS) break;
 
-            String key = entry.getKey();
-            Item item = entry.getValue();
+            Item item = JETPlugin.ITEMS.get(itemId);
+            if (item == null) continue; // Skip if item doesn't exist
 
             if (col == 0) {
                 cmd.appendInline("#ItemCards", "Group { LayoutMode: Left; Anchor: (Bottom: 0); }");
@@ -193,23 +177,20 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             cmd.append("#ItemCards[" + row + "]", "Pages/JET_ItemIcon.ui");
             String sel = "#ItemCards[" + row + "][" + col + "]";
 
-            cmd.set(sel + " #ItemIcon.ItemId", key);
+            cmd.set(sel + " #ItemIcon.ItemId", itemId);
 
             String displayName = getDisplayName(item, language);
             if (displayName.length() > 14) {
                 displayName = displayName.substring(0, 12) + "...";
             }
             cmd.set(sel + " #ItemName.TextSpans", Message.raw(displayName));
-            cmd.set(sel + ".TooltipTextSpans", buildTooltip(key, item, language));
+            cmd.set(sel + ".TooltipTextSpans", buildTooltip(itemId, item, language));
 
-            // Set pin button icon
-            UUID playerId = playerRef.getUuid();
-            boolean isPinned = JETPlugin.getInstance().getPinManager().isPinned(playerId, key);
-            String pinIcon = isPinned ? "★" : "☆";
-            cmd.set(sel + " #PinButton #PinIcon.TextSpans", Message.raw(pinIcon));
+            // Set pin button to filled star
+            cmd.set(sel + " #PinButton #PinIcon.TextSpans", Message.raw("★"));
 
-            events.addEventBinding(CustomUIEventBindingType.Activating, sel, EventData.of("SelectedItem", key), false);
-            events.addEventBinding(CustomUIEventBindingType.Activating, sel + " #PinButton", EventData.of("PinToggle", key), false);
+            events.addEventBinding(CustomUIEventBindingType.Activating, sel, EventData.of("SelectedItem", itemId), false);
+            events.addEventBinding(CustomUIEventBindingType.Activating, sel + " #PinButton", EventData.of("PinToggle", itemId), false);
 
             col++;
             if (col >= ITEMS_PER_ROW) {
@@ -220,88 +201,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
     }
 
-    private boolean matchesSearch(String itemId, Item item) {
-        String query = searchQuery.toLowerCase().trim();
-        String language = playerRef.getLanguage();
-
-        // Component filtering with # prefix (e.g., #tool, #food)
-        if (query.startsWith("#")) {
-            String componentTag = query.substring(1); // Remove the # prefix
-            return hasComponent(item, componentTag);
-        }
-
-        // Normal search: check translated name
-        String translatedName = getDisplayName(item, language).toLowerCase();
-        if (translatedName.contains(query)) return true;
-
-        // Check item ID
-        if (itemId.toLowerCase().contains(query)) return true;
-
-        return false;
-    }
-
-    private boolean hasComponent(Item item, String componentTag) {
-        if (item == null || componentTag == null || componentTag.isEmpty()) {
-            return false;
-        }
-
-        // Check item ID - many items have their type in the ID (e.g., Weapon_Sword, Tool_Pickaxe, Food_Apple)
-        try {
-            Method getIdMethod = Item.class.getMethod("getId");
-            Object idObj = getIdMethod.invoke(item);
-            if (idObj != null) {
-                String itemId = idObj.toString().toLowerCase();
-                if (itemId.contains(componentTag.toLowerCase())) {
-                    return true;
-                }
-            }
-        } catch (Exception ignored) {}
-
-        try {
-            // Try getItemType() which returns the item's type category
-            Method getItemTypeMethod = Item.class.getMethod("getItemType");
-            Object itemType = getItemTypeMethod.invoke(item);
-            if (itemType != null) {
-                String itemTypeStr = itemType.toString().toLowerCase();
-                if (itemTypeStr.contains(componentTag.toLowerCase())) {
-                    return true;
-                }
-            }
-        } catch (Exception ignored) {}
-
-        try {
-            // Try to get components/tags via getComponents
-            Method getComponentsMethod = Item.class.getMethod("getComponents");
-            Object components = getComponentsMethod.invoke(item);
-            if (components != null) {
-                String componentsStr = components.toString().toLowerCase();
-                if (componentsStr.contains(componentTag.toLowerCase())) {
-                    return true;
-                }
-            }
-        } catch (Exception ignored) {}
-
-        try {
-            // Try hasComponent method
-            Method hasComponentMethod = Item.class.getMethod("hasComponent", String.class);
-            Object result = hasComponentMethod.invoke(item, componentTag);
-            if (result instanceof Boolean && (Boolean) result) {
-                return true;
-            }
-        } catch (Exception ignored) {}
-
-        try {
-            // Try getComponent method
-            Method getComponentMethod = Item.class.getMethod("getComponent", String.class);
-            Object component = getComponentMethod.invoke(item, componentTag);
-            if (component != null) {
-                return true;
-            }
-        } catch (Exception ignored) {}
-
-        return false;
-    }
-
     private void buildRecipePanel(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         if (selectedItem == null || selectedItem.isEmpty()) {
             cmd.set("#RecipePanel.Visible", false);
@@ -310,14 +209,12 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
         cmd.set("#RecipePanel.Visible", true);
 
-        // Use global ITEMS map
         Item item = JETPlugin.ITEMS.get(selectedItem);
         String language = playerRef.getLanguage();
 
         cmd.set("#RecipePanel #SelectedIcon.ItemId", selectedItem);
         cmd.set("#RecipePanel #SelectedName.TextSpans", Message.raw(getDisplayName(item, language)));
 
-        // Get recipe IDs from global maps like Lumenia
         List<String> craftRecipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(selectedItem, Collections.emptyList());
         List<String> usageRecipeIds = JETPlugin.ITEM_FROM_RECIPES.getOrDefault(selectedItem, Collections.emptyList());
 
@@ -364,7 +261,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         cmd.clear("#RecipePanel #RecipeListContainer #RecipeList");
 
         if (recipeIds.isEmpty()) {
-            cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw("Not used in recipes"));
+            cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw("No usage recipes"));
             cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw(""));
             return;
         }
@@ -376,7 +273,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         int start = usagePage * RECIPES_PER_PAGE;
         int end = Math.min(start + RECIPES_PER_PAGE, recipeIds.size());
 
-        cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw("Uses (" + recipeIds.size() + "):"));
+        cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw("Usage (" + recipeIds.size() + "):"));
         cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw((usagePage + 1) + " / " + totalPages));
 
         for (int i = start; i < end; i++) {
@@ -392,159 +289,114 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
     }
 
-    private void buildRecipeDisplay(UICommandBuilder cmd, CraftingRecipe recipe, String rSel) {
-        String recipeId = recipe.getId();
-        if (recipeId.contains(":")) recipeId = recipeId.substring(recipeId.indexOf(":") + 1);
-
-        String benchInfo = "";
-        if (recipe.getBenchRequirement() != null && recipe.getBenchRequirement().length > 0) {
-            BenchRequirement bench = recipe.getBenchRequirement()[0];
-            benchInfo = " [" + formatBenchName(bench.id) + " T" + bench.requiredTierLevel + "]";
-        }
-
-        cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(recipeId + benchInfo));
-
-        // Add input items
+    private void buildRecipeDisplay(UICommandBuilder cmd, CraftingRecipe recipe, String selector) {
         List<MaterialQuantity> inputs = getRecipeInputs(recipe);
-        cmd.clear(rSel + " #InputItems");
-        for (int j = 0; j < inputs.size(); j++) {
-            MaterialQuantity input = inputs.get(j);
-            cmd.appendInline(rSel + " #InputItems",
-                    "Group { LayoutMode: Top; Padding: (Right: 6); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
-            cmd.set(rSel + " #InputItems[" + j + "][0].ItemId", input.getItemId());
-            cmd.set(rSel + " #InputItems[" + j + "][1].Text", "x" + input.getQuantity());
-        }
-
-        // Add output items
         MaterialQuantity[] outputs = recipe.getOutputs();
-        cmd.clear(rSel + " #OutputItems");
-        if (outputs != null && outputs.length > 0) {
-            for (int j = 0; j < outputs.length; j++) {
-                MaterialQuantity output = outputs[j];
-                if (output != null && output.getItemId() != null) {
-                    cmd.appendInline(rSel + " #OutputItems",
-                            "Group { LayoutMode: Top; Padding: (Right: 6); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
-                    cmd.set(rSel + " #OutputItems[" + j + "][0].ItemId", output.getItemId());
-                    cmd.set(rSel + " #OutputItems[" + j + "][1].Text", "x" + output.getQuantity());
-                }
+
+        cmd.clear(selector + " #InputItems");
+        for (int i = 0; i < inputs.size() && i < 9; i++) {
+            MaterialQuantity input = inputs.get(i);
+            cmd.appendInline(selector + " #InputItems", "ItemIcon { Anchor: (Width: 32, Height: 32); }");
+            cmd.set(selector + " #InputItems[" + i + "].ItemId", input.getItemId());
+            if (input.getQuantity() > 1) {
+                cmd.set(selector + " #InputItems[" + i + "].TooltipTextSpans",
+                    Message.raw(input.getItemId() + " x" + input.getQuantity()));
             }
         }
-    }
 
-    private String formatBenchName(String benchId) {
-        if (benchId == null) return "";
-        if (benchId.contains(":")) benchId = benchId.substring(benchId.indexOf(":") + 1);
-        if (benchId.startsWith("hytale_")) benchId = benchId.substring(7);
-        String[] parts = benchId.split("_");
-        StringBuilder result = new StringBuilder();
-        for (String part : parts) {
-            if (result.length() > 0) result.append(" ");
-            result.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1));
-        }
-        return result.toString();
-    }
-
-    private String getDisplayName(Item item, String language) {
-        if (item == null) return "Unknown";
-        try {
-            String key = item.getTranslationKey();
-            if (key != null) {
-                String translated = I18nModule.get().getMessage(language, key);
-                if (translated != null && !translated.isEmpty()) {
-                    return translated;
-                }
+        cmd.clear(selector + " #OutputItems");
+        for (int i = 0; i < outputs.length; i++) {
+            MaterialQuantity output = outputs[i];
+            cmd.appendInline(selector + " #OutputItems", "ItemIcon { Anchor: (Width: 48, Height: 48); }");
+            cmd.set(selector + " #OutputItems[" + i + "].ItemId", output.getItemId());
+            if (output.getQuantity() > 1) {
+                cmd.set(selector + " #OutputItems[" + i + "].TooltipTextSpans",
+                    Message.raw(output.getItemId() + " x" + output.getQuantity()));
             }
-        } catch (Exception ignored) {}
-
-        String id = item.getId();
-        if (id == null) return "Unknown";
-        if (id.contains(":")) id = id.substring(id.indexOf(":") + 1);
-        int underscore = id.indexOf("_");
-        if (underscore > 0) id = id.substring(underscore + 1);
-        return id.replace("_", " ");
-    }
-
-    private Message buildTooltip(String itemId, Item item, String language) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(getDisplayName(item, language)).append("\n");
-        sb.append("-------------------\n");
-        sb.append("ID: ").append(itemId).append("\n");
-        sb.append("Stack: ").append(item.getMaxStack());
-
-        if (item.getMaxDurability() > 0) {
-            sb.append("\nDurability: ").append((int)item.getMaxDurability());
         }
-
-        sb.append("\n-------------------");
-        sb.append("\nClick to view recipes");
-
-        return Message.raw(sb.toString());
     }
 
     private List<MaterialQuantity> getRecipeInputs(CraftingRecipe recipe) {
         List<MaterialQuantity> result = new ArrayList<>();
-        Object inputsObj = null;
 
-        // Try getInput method first
+        Method getInputMethod = null;
         try {
-            Method getInputMethod = CraftingRecipe.class.getMethod("getInput");
-            inputsObj = getInputMethod.invoke(recipe);
-        } catch (Exception e) {
-            // Try alternatives
-            String[] methodNames = {"getInputs", "getIngredients", "getMaterials", "getRecipeInputs", "getRequiredMaterials"};
+            getInputMethod = CraftingRecipe.class.getMethod("getInput");
+        } catch (NoSuchMethodException e) {
+            // Try alternative methods
+        }
+
+        Object inputsObj = null;
+        if (getInputMethod != null) {
+            try {
+                inputsObj = getInputMethod.invoke(recipe);
+            } catch (Exception ignored) {}
+        }
+
+        if (inputsObj == null) {
+            String[] methodNames = {"getInputs", "getIngredients", "getMaterials"};
             for (String methodName : methodNames) {
                 try {
-                    Method method = CraftingRecipe.class.getMethod(methodName);
-                    inputsObj = method.invoke(recipe);
+                    Method fallbackMethod = CraftingRecipe.class.getMethod(methodName);
+                    inputsObj = fallbackMethod.invoke(recipe);
                     if (inputsObj != null) break;
                 } catch (Exception ignored) {}
             }
         }
 
-        // Process inputs
         if (inputsObj != null) {
             if (inputsObj instanceof MaterialQuantity) {
-                MaterialQuantity input = (MaterialQuantity) inputsObj;
-                if (input != null && input.getItemId() != null) {
-                    result.add(input);
-                }
+                result.add((MaterialQuantity) inputsObj);
             } else if (inputsObj instanceof List) {
                 List<?> inputs = (List<?>) inputsObj;
                 for (Object obj : inputs) {
                     if (obj instanceof MaterialQuantity) {
-                        MaterialQuantity input = (MaterialQuantity) obj;
-                        if (input != null && input.getItemId() != null) {
-                            result.add(input);
-                        }
+                        result.add((MaterialQuantity) obj);
                     }
                 }
             } else if (inputsObj instanceof MaterialQuantity[]) {
-                MaterialQuantity[] inputs = (MaterialQuantity[]) inputsObj;
-                for (MaterialQuantity input : inputs) {
-                    if (input != null && input.getItemId() != null) {
-                        result.add(input);
-                    }
-                }
-            } else if (inputsObj instanceof Collection) {
-                Collection<?> inputs = (Collection<?>) inputsObj;
-                for (Object obj : inputs) {
-                    if (obj instanceof MaterialQuantity) {
-                        MaterialQuantity input = (MaterialQuantity) obj;
-                        if (input != null && input.getItemId() != null) {
-                            result.add(input);
-                        }
-                    }
-                }
+                result.addAll(Arrays.asList((MaterialQuantity[]) inputsObj));
             }
         }
 
         return result;
     }
 
+    private String getDisplayName(Item item, String language) {
+        if (item == null) return "Unknown";
+
+        try {
+            String translationKey = item.getTranslationKey();
+            if (translationKey != null && !translationKey.isEmpty()) {
+                return I18nModule.translateText(translationKey, language);
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            Method getIdMethod = Item.class.getMethod("getId");
+            Object idObj = getIdMethod.invoke(item);
+            if (idObj != null) {
+                String id = idObj.toString();
+                if (id.contains(":")) {
+                    return id.substring(id.indexOf(":") + 1).replace("_", " ");
+                }
+                return id.replace("_", " ");
+            }
+        } catch (Exception ignored) {}
+
+        return "Unknown Item";
+    }
+
+    private Message buildTooltip(String itemId, Item item, String language) {
+        StringBuilder tooltip = new StringBuilder();
+        tooltip.append(getDisplayName(item, language)).append("\n");
+        tooltip.append("ID: ").append(itemId);
+        return Message.raw(tooltip.toString());
+    }
+
     public static class GuiData {
         public static final BuilderCodec<GuiData> CODEC = BuilderCodec
                 .builder(GuiData.class, GuiData::new)
-                .addField(new KeyedCodec<>("@SearchQuery", Codec.STRING), (d, v) -> d.searchQuery = v, d -> d.searchQuery)
                 .addField(new KeyedCodec<>("SelectedItem", Codec.STRING), (d, v) -> d.selectedItem = v, d -> d.selectedItem)
                 .addField(new KeyedCodec<>("ActiveSection", Codec.STRING), (d, v) -> d.activeSection = v, d -> d.activeSection)
                 .addField(new KeyedCodec<>("PageChange", Codec.STRING), (d, v) -> d.pageChange = v, d -> d.pageChange)
@@ -552,7 +404,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("PinToggle", Codec.STRING), (d, v) -> d.pinToggle = v, d -> d.pinToggle)
                 .build();
 
-        private String searchQuery;
         private String selectedItem;
         private String activeSection;
         private String pageChange;
