@@ -8,12 +8,15 @@ import com.hypixel.hytale.server.core.command.system.AbstractCommand;
 import com.hypixel.hytale.server.core.command.system.CommandContext;
 import com.hypixel.hytale.server.core.command.system.CommandSender;
 import com.hypixel.hytale.server.core.entity.entities.Player;
+import com.hypixel.hytale.server.core.Message;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import dev.hytalemod.jet.JETPlugin;
 import dev.hytalemod.jet.gui.PinnedGui;
 
 import javax.annotation.Nonnull;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -23,7 +26,7 @@ public class JETPinnedCommand extends AbstractCommand {
 
     public JETPinnedCommand() {
         super("pinned", "Opens the pinned items viewer", false);
-        addAliases("fav", "favorites", "favourites");
+        addAliases("fav", "favorites", "favourites", "p");
         setPermissionGroup(GameMode.Adventure);
     }
 
@@ -49,6 +52,13 @@ public class JETPinnedCommand extends AbstractCommand {
             PlayerRef playerRef = (PlayerRef) store.getComponent(ref, PlayerRef.getComponentType());
 
             if (playerRef != null) {
+                Set<String> pinnedItems = JETPlugin.getInstance().getPinnedItemsStorage().getPinnedItems(playerRef.getUuid());
+
+                if (pinnedItems.isEmpty()) {
+                    player.sendMessage(Message.raw("§eNo pinned items yet! Use §6/jet§e to browse items and pin your favorites."));
+                    return;
+                }
+
                 PinnedGui gui = new PinnedGui(playerRef, CustomPageLifetime.CanDismiss);
                 player.getPageManager().openCustomPage(ref, store, gui);
             }

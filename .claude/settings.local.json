@@ -8,7 +8,16 @@
       "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
       "Bash(du:*)",
       "Bash(find:*)",
-      "Bash(unzip:*)"
+      "Bash(unzip:*)",
+      "Bash(dir \"C:\\\\Users\\\\benja\\\\OneDrive\\\\Desktop\\\\hytale\\\\JET\" /b)",
+      "Bash(./gradlew build:*)",
+      "Bash(javap:*)",
+      "Bash(./gradlew.bat:*)",
+      "Bash(jar -tf:*)",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\benja\\\\OneDrive\\\\Desktop\\\\hytale\\\\JET\" -Recurse -Filter \"*.log\")",
+      "Bash(Sort-Object LastWriteTime -Descending)",
+      "Bash(Select-Object -First 5)",
+      "Bash(Get-Content $_FullName -Tail 50 })"
     ]
   }
 }

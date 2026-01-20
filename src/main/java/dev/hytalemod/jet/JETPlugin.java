@@ -4,8 +4,6 @@ import com.hypixel.hytale.assetstore.event.LoadedAssetsEvent;
 import com.hypixel.hytale.assetstore.map.DefaultAssetMap;
 import com.hypixel.hytale.server.core.asset.type.item.config.CraftingRecipe;
 import com.hypixel.hytale.server.core.asset.type.item.config.Item;
-import com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent;
-import com.hypixel.hytale.server.core.event.events.player.PlayerMouseButtonEvent;
 import com.hypixel.hytale.server.core.inventory.MaterialQuantity;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
@@ -13,22 +11,17 @@ import dev.hytalemod.jet.command.JETCommand;
 import dev.hytalemod.jet.command.JETInfoCommand;
 import dev.hytalemod.jet.command.JETListCommand;
 import dev.hytalemod.jet.command.JETPinnedCommand;
-import dev.hytalemod.jet.input.JETKeybindHandler;
 import dev.hytalemod.jet.registry.ItemRegistry;
 import dev.hytalemod.jet.registry.RecipeRegistry;
 import dev.hytalemod.jet.storage.PinnedItemsStorage;
+import dev.hytalemod.jet.system.JETKeybindSystem;
 
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.logging.Level;
 
 /**
- * JET (Just Enough Things) - Item Encyclopedia Plugin
- *
- * Features:
- * - Browse all items with search functionality
- * - View recipes and item info
- * - Toggle with Mouse Side Button (X1) or /jet command
+ * JET - Item Encyclopedia Plugin
  */
 public class JETPlugin extends JavaPlugin {
 
@@ -38,8 +31,8 @@ public class JETPlugin extends JavaPlugin {
     private ItemRegistry itemRegistry;
     private RecipeRegistry recipeRegistry;
     private PinnedItemsStorage pinnedItemsStorage;
+    private JETKeybindSystem keybindSystem;
 
-    // Global recipe maps like Lumenia
     public static Map<String, Item> ITEMS = new HashMap<>();
     public static Map<String, CraftingRecipe> RECIPES = new HashMap<>();
     public static Map<String, List<String>> ITEM_TO_RECIPES = new HashMap<>();
@@ -59,34 +52,23 @@ public class JETPlugin extends JavaPlugin {
         pinnedItemsStorage = new PinnedItemsStorage();
         pinnedItemsStorage.load();
 
-        // Register commands
+        // Keybind system temporarily disabled due to issues
+        // keybindSystem = new JETKeybindSystem();
+        // getEntityStoreRegistry().registerSystem(keybindSystem);
         getCommandRegistry().registerCommand(new JETCommand());
         getCommandRegistry().registerCommand(new JETInfoCommand());
         getCommandRegistry().registerCommand(new JETListCommand());
         getCommandRegistry().registerCommand(new JETPinnedCommand());
-
-        // Register mouse button event for keybind toggle
-        getEventRegistry().registerGlobal(PlayerMouseButtonEvent.class, event -> {
-            JETKeybindHandler.getInstance().onMouseButton(event);
-        });
-
-        // Register disconnect event for cleanup
-        getEventRegistry().registerGlobal(PlayerDisconnectEvent.class, event -> {
-            JETKeybindHandler.getInstance().onPlayerDisconnect(event.getPlayerRef().getUuid());
-        });
-
-        // Register asset loading events
         getEventRegistry().register(LoadedAssetsEvent.class, Item.class, JETPlugin::onItemsLoaded);
         getEventRegistry().register(LoadedAssetsEvent.class, CraftingRecipe.class, JETPlugin::onRecipesLoaded);
 
         getLogger().at(Level.INFO).log("[JET] Plugin enabled - v" + VERSION);
-        getLogger().at(Level.INFO).log("[JET] Press Mouse Side Button (X1) to toggle item browser");
-        getLogger().at(Level.INFO).log("[JET] Or use /jet command");
+        getLogger().at(Level.INFO).log("[JET] Use /jet or /j to open item browser, /pinned or /p for pinned items");
+        // getLogger().at(Level.INFO).log("[JET] Keybind: Alt = Item Browser");
     }
 
     @SuppressWarnings("unchecked")
     private static void onItemsLoaded(LoadedAssetsEvent<String, Item, DefaultAssetMap<String, Item>> event) {
-        // Store in global ITEMS map like Lumenia
         ITEMS = ((DefaultAssetMap<String, Item>) event.getAssetMap()).getAssetMap();
         instance.itemRegistry.reload(ITEMS);
         instance.getLogger().at(Level.INFO).log("[JET] Loaded " + instance.itemRegistry.size() + " items");
@@ -101,23 +83,18 @@ public class JETPlugin extends JavaPlugin {
             return;
         }
 
-        // Build recipe maps exactly like Lumenia does
         Method getInputMethod = null;
         try {
             getInputMethod = CraftingRecipe.class.getMethod("getInput");
         } catch (NoSuchMethodException e) {
-            // Method doesn't exist, will try alternatives later
         }
 
         for (CraftingRecipe recipe : recipes.values()) {
             RECIPES.put(recipe.getId(), recipe);
-
-            // Build ITEM_TO_RECIPES (output items -> recipe IDs)
             for (MaterialQuantity output : recipe.getOutputs()) {
                 ITEM_TO_RECIPES.computeIfAbsent(output.getItemId(), k -> new ArrayList<>()).add(recipe.getId());
             }
 
-            // Build ITEM_FROM_RECIPES (input items -> recipe IDs)
             if (getInputMethod != null) {
                 try {
                     Object inputsObj = getInputMethod.invoke(recipe);
@@ -125,10 +102,8 @@ public class JETPlugin extends JavaPlugin {
                         processRecipeInputs(inputsObj, recipe.getId());
                     }
                 } catch (Exception e) {
-                    // Ignore
                 }
             } else {
-                // Try alternative methods
                 String[] methodNames = {"getInputs", "getIngredients", "getMaterials", "getRecipeInputs", "getRequiredMaterials"};
                 for (String methodName : methodNames) {
                     try {
@@ -139,7 +114,6 @@ public class JETPlugin extends JavaPlugin {
                             break;
                         }
                     } catch (Exception e) {
-                        // Continue trying
                     }
                 }
             }
@@ -200,5 +174,9 @@ public class JETPlugin extends JavaPlugin {
 
     public PinnedItemsStorage getPinnedItemsStorage() {
         return pinnedItemsStorage;
+    }
+
+    public JETKeybindSystem getKeybindSystem() {
+        return keybindSystem;
     }
 }

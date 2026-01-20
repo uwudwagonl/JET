@@ -20,6 +20,8 @@ import com.hypixel.hytale.server.core.ui.builder.UIEventBuilder;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import dev.hytalemod.jet.JETPlugin;
+import dev.hytalemod.jet.util.InventoryScanner;
+import com.hypixel.hytale.server.core.entity.entities.Player;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -121,6 +123,15 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         // Handle pin/unpin action
         if (data.pinAction != null && "toggle".equals(data.pinAction) && this.selectedItem != null) {
             UUID playerUuid = playerRef.getUuid();
+            Set<String> pinnedItems = JETPlugin.getInstance().getPinnedItemsStorage().getPinnedItems(playerUuid);
+
+            // If unpinning the last item, close the menu first
+            if (pinnedItems.size() == 1 && pinnedItems.contains(this.selectedItem)) {
+                JETPlugin.getInstance().getPinnedItemsStorage().togglePin(playerUuid, this.selectedItem);
+                close();
+                return;
+            }
+
             boolean isPinned = JETPlugin.getInstance().getPinnedItemsStorage().togglePin(playerUuid, this.selectedItem);
             needsRecipeUpdate = true;
             // If item was unpinned, also refresh the item list
@@ -280,13 +291,13 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         cmd.set("#RecipePanel #PinButton.Text", isPinned ? "Unpin" : "Pin");
 
         if ("craft".equals(activeSection)) {
-            buildCraftSection(cmd, events, craftRecipeIds);
+            buildCraftSection(ref, cmd, events, craftRecipeIds);
         } else {
-            buildUsageSection(cmd, events, usageRecipeIds);
+            buildUsageSection(ref, cmd, events, usageRecipeIds);
         }
     }
 
-    private void buildCraftSection(UICommandBuilder cmd, UIEventBuilder events, List<String> recipeIds) {
+    private void buildCraftSection(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, List<String> recipeIds) {
         cmd.clear("#RecipePanel #RecipeListContainer #RecipeList");
 
         if (recipeIds.isEmpty()) {
@@ -312,11 +323,11 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
             cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
             String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
 
-            buildRecipeDisplay(cmd, recipe, rSel);
+            buildRecipeDisplay(cmd, recipe, rSel, ref);
         }
     }
 
-    private void buildUsageSection(UICommandBuilder cmd, UIEventBuilder events, List<String> recipeIds) {
+    private void buildUsageSection(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, List<String> recipeIds) {
         cmd.clear("#RecipePanel #RecipeListContainer #RecipeList");
 
         if (recipeIds.isEmpty()) {
@@ -342,11 +353,11 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
             cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
             String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
 
-            buildRecipeDisplay(cmd, recipe, rSel);
+            buildRecipeDisplay(cmd, recipe, rSel, ref);
         }
     }
 
-    private void buildRecipeDisplay(UICommandBuilder cmd, CraftingRecipe recipe, String rSel) {
+    private void buildRecipeDisplay(UICommandBuilder cmd, CraftingRecipe recipe, String rSel, Ref<EntityStore> ref) {
         String recipeId = recipe.getId();
         if (recipeId.contains(":")) recipeId = recipeId.substring(recipeId.indexOf(":") + 1);
 
@@ -358,15 +369,44 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
 
         cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(recipeId + benchInfo));
 
-        // Add input items
+        // Get player for inventory scanning
+        Player player = null;
+        if (ref != null && ref.isValid()) {
+            Store<EntityStore> store = ref.getStore();
+            if (store != null) {
+                player = store.getComponent(ref, Player.getComponentType());
+            }
+        }
+
+        // Add input items with inventory counts
         List<MaterialQuantity> inputs = getRecipeInputs(recipe);
         cmd.clear(rSel + " #InputItems");
         for (int j = 0; j < inputs.size(); j++) {
             MaterialQuantity input = inputs.get(j);
+            String itemId = input.getItemId();
+            int requiredQty = input.getQuantity();
+
             cmd.appendInline(rSel + " #InputItems",
                     "Group { LayoutMode: Top; Padding: (Right: 6); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
-            cmd.set(rSel + " #InputItems[" + j + "][0].ItemId", input.getItemId());
-            cmd.set(rSel + " #InputItems[" + j + "][1].Text", "x" + input.getQuantity());
+            cmd.set(rSel + " #InputItems[" + j + "][0].ItemId", itemId);
+
+            // Count items in inventory
+            String labelText;
+            if (player != null) {
+                int inventoryCount = InventoryScanner.countItemInInventory(player, itemId);
+
+                // Color code: green if enough, red if not enough
+                String color = inventoryCount >= requiredQty ? "#00ff00" : "#ff0000";
+                labelText = inventoryCount + "/" + requiredQty;
+
+                // Update label with color
+                cmd.set(rSel + " #InputItems[" + j + "][1].Text", labelText);
+                cmd.set(rSel + " #InputItems[" + j + "][1].Style.TextColor", color);
+            } else {
+                // Fallback to old format if player not available
+                labelText = "x" + requiredQty;
+                cmd.set(rSel + " #InputItems[" + j + "][1].Text", labelText);
+            }
         }
 
         // Add output items
