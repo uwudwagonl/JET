@@ -5,15 +5,7 @@ import dev.hytalemod.jei.registry.ItemInfo;
 
 import java.util.List;
 
-/**
- * Command handler for /jei command
- * 
- * Usage:
- * /jei - Opens the JEI screen
- * /jei search <query> - Opens JEI with search pre-filled
- * /jei info <item_id> - Shows item details in chat
- * /jei reload - Rescans item registries
- */
+
 public class JEICommand {
     
     private final HytaleJEIPlugin plugin;
