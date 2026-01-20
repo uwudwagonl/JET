@@ -7,10 +7,25 @@ $C.@PageOverlay {
 
     #Title {
       Group {
-        $C.@Title {
-          @Text = "Just Enough Tales";
+        LayoutMode: Top;
+
+        Group {
+          $C.@Title {
+            @Text = "Just Enough Tales";
+          }
+          $C.@HeaderSearch {}
         }
-        $C.@HeaderSearch {}
+
+        Label #SearchHint {
+          Text: "Search tip: Use @mod to filter by namespace, -term to exclude";
+          Style: (
+            FontSize: 11,
+            TextColor: #888888,
+            HorizontalAlignment: Center
+          );
+          Padding: (Top: 2, Bottom: 5);
+          Anchor: (Height: 18);
+        }
       }
     }
 
@@ -22,6 +37,62 @@ $C.@PageOverlay {
         LayoutMode: Top;
         Padding: (Left: 10, Right: 5);
 
+        Group #FilterSection {
+          LayoutMode: Left;
+          Padding: (Left: 8, Right: 8, Top: 8, Bottom: 5);
+          Background: (Color: #1a1a1a(0.4));
+          Anchor: (Height: 50);
+
+          TextButton #FilterTool {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 5);
+            Text: "Tools";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+          TextButton #FilterWeapon {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 5);
+            Text: "Weapons";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+          TextButton #FilterArmor {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 5);
+            Text: "Armor";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+          TextButton #FilterConsumable {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 5);
+            Text: "Consumables";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+          TextButton #FilterBlock {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 5);
+            Text: "Blocks";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+          TextButton #FilterCraftable {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 5);
+            Text: "Craftable";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+          TextButton #FilterNonCraftable {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 10);
+            Text: "Non-Craftable";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+
+          TextButton #ClearFilters {
+            Anchor: (Width: 70, Height: 36);
+            Text: "Clear";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+        }
+
         Group #ItemCardContainer {
           FlexWeight: 1;
           LayoutMode: TopScrolling;
@@ -29,6 +100,52 @@ $C.@PageOverlay {
 
           Group #ItemCards {
             LayoutMode: Top;
+          }
+        }
+
+        Group #ItemPagination {
+          LayoutMode: Left;
+          Padding: (Top: 5, Bottom: 5);
+          Anchor: (Height: 45);
+
+          TextButton #PrevItemPage {
+            Anchor: (Width: 70, Height: 35);
+            Text: "Prev";
+            Style: TextButtonStyle(
+              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true)),
+              Hovered: (Background: #3a3a3a(0.9)),
+              Pressed: (Background: #4a4a4a(1.0)),
+              Sounds: $C.@ButtonSounds
+            );
+            Background: #2a2a2a(0.6);
+            Padding: (Full: 8);
+            Visible: false;
+          }
+
+          Label #ItemPageInfo {
+            FlexWeight: 1;
+            Style: (
+              FontSize: 13,
+              TextColor: #aaaaaa,
+              HorizontalAlignment: Center,
+              VerticalAlignment: Center
+            );
+            Padding: (Full: 8);
+            Anchor: (Left: 10, Right: 10);
+          }
+
+          TextButton #NextItemPage {
+            Anchor: (Width: 70, Height: 35);
+            Text: "Next";
+            Style: TextButtonStyle(
+              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true)),
+              Hovered: (Background: #3a3a3a(0.9)),
+              Pressed: (Background: #4a4a4a(1.0)),
+              Sounds: $C.@ButtonSounds
+            );
+            Background: #2a2a2a(0.6);
+            Padding: (Full: 8);
+            Visible: false;
           }
         }
       }

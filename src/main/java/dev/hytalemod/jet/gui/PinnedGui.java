@@ -56,6 +56,12 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         // Hide search bar - users can see all pinned items at once
         cmd.set("#SearchInput.Visible", false);
 
+        // Hide filter section buttons
+        cmd.set("#FilterSection.Visible", false);
+
+        // Hide search hint text
+        cmd.set("#SearchHint.Visible", false);
+
         // Toggle mode button - switches to craft mode
         events.addEventBinding(
                 CustomUIEventBindingType.Activating,
@@ -203,12 +209,12 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
             // Subtitle
             cmd.appendInline("#ItemCards[0]",
                 "Label { Style: (FontSize: 13, TextColor: #aaaaaa, HorizontalAlignment: Center); Padding: (Top: 10); }");
-            cmd.set("#ItemCards[0][2].Text", "Browse items with /jet and click the Pin button");
+            cmd.set("#ItemCards[0][2].Text", "Use /jet to browse items");
 
             // Hint
             cmd.appendInline("#ItemCards[0]",
-                "Label { Style: (FontSize: 11, TextColor: #777777, HorizontalAlignment: Center); Padding: (Top: 8); }");
-            cmd.set("#ItemCards[0][3].Text", "to save your favorites here!");
+                "Label { Style: (FontSize: 13, TextColor: #aaaaaa, HorizontalAlignment: Center); Padding: (Top: 2); }");
+            cmd.set("#ItemCards[0][3].Text", "and pin your favorites!");
 
             return;
         }
@@ -367,7 +373,13 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
             benchInfo = " [" + formatBenchName(bench.id) + " T" + bench.requiredTierLevel + "]";
         }
 
-        cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(recipeId + benchInfo));
+        // Truncate long recipe names for better formatting
+        String fullTitle = recipeId + benchInfo;
+        if (fullTitle.length() > 45) {
+            fullTitle = fullTitle.substring(0, 42) + "...";
+        }
+
+        cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(fullTitle));
 
         // Get player for inventory scanning
         Player player = null;

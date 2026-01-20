@@ -17,7 +17,8 @@
       "Bash(Get-ChildItem \"C:\\\\Users\\\\benja\\\\OneDrive\\\\Desktop\\\\hytale\\\\JET\" -Recurse -Filter \"*.log\")",
       "Bash(Sort-Object LastWriteTime -Descending)",
       "Bash(Select-Object -First 5)",
-      "Bash(Get-Content $_FullName -Tail 50 })"
+      "Bash(Get-Content $_FullName -Tail 50 })",
+      "Bash(jar -xf:*)"
     ]
   }
 }
