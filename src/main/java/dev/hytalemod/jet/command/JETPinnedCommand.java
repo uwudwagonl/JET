@@ -8,48 +8,58 @@ import com.hypixel.hytale.server.core.command.system.AbstractCommand;
 import com.hypixel.hytale.server.core.command.system.CommandContext;
 import com.hypixel.hytale.server.core.command.system.CommandSender;
 import com.hypixel.hytale.server.core.entity.entities.Player;
+import com.hypixel.hytale.server.core.Message;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
-import dev.hytalemod.jet.gui.JETGui;
+import dev.hytalemod.jet.JETPlugin;
+import dev.hytalemod.jet.gui.PinnedGui;
 
 import javax.annotation.Nonnull;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * /jet - Opens the item browser
+ * /pinned or /fav - Opens the pinned items viewer
  */
-public class JETCommand extends AbstractCommand {
-    
-    public JETCommand() {
-        super("jet", "Opens the JET item browser", false);
-        addAliases("jei", "items", "j");
+public class JETPinnedCommand extends AbstractCommand {
+
+    public JETPinnedCommand() {
+        super("pinned", "Opens the pinned items viewer", false);
+        addAliases("fav", "favorites", "favourites", "p");
         setPermissionGroup(GameMode.Adventure);
     }
-    
+
     @Override
     protected CompletableFuture<Void> execute(@Nonnull CommandContext context) {
         CommandSender sender = context.sender();
-        
+
         if (!(sender instanceof Player)) {
             return CompletableFuture.completedFuture(null);
         }
-        
+
         Player player = (Player) sender;
         Ref<EntityStore> ref = player.getReference();
-        
+
         if (ref == null || !ref.isValid()) {
             return CompletableFuture.completedFuture(null);
         }
-        
+
         Store<EntityStore> store = ref.getStore();
         World world = ((EntityStore) store.getExternalData()).getWorld();
-        
+
         return CompletableFuture.runAsync(() -> {
             PlayerRef playerRef = (PlayerRef) store.getComponent(ref, PlayerRef.getComponentType());
-            
+
             if (playerRef != null) {
-                JETGui gui = new JETGui(playerRef, CustomPageLifetime.CanDismiss, "");
+                Set<String> pinnedItems = JETPlugin.getInstance().getPinnedItemsStorage().getPinnedItems(playerRef.getUuid());
+
+                if (pinnedItems.isEmpty()) {
+                    player.sendMessage(Message.raw("§eNo pinned items yet! Use §6/jet§e to browse items and pin your favorites."));
+                    return;
+                }
+
+                PinnedGui gui = new PinnedGui(playerRef, CustomPageLifetime.CanDismiss);
                 player.getPageManager().openCustomPage(ref, store, gui);
             }
         }, world);

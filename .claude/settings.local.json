@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.gradlew clean build:*)",
+      "Bash(./gradlew.bat clean:*)",
+      "Bash(set JAVA_HOME=C:Program FilesJavajdk-21)",
+      "Bash(export JAVA_HOME=\"C:\\\\Program Files\\\\Java\\\\jdk-21\")",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
+      "Bash(du:*)",
+      "Bash(find:*)",
+      "Bash(unzip:*)",
+      "Bash(dir \"C:\\\\Users\\\\benja\\\\OneDrive\\\\Desktop\\\\hytale\\\\JET\" /b)",
+      "Bash(./gradlew build:*)",
+      "Bash(javap:*)",
+      "Bash(./gradlew.bat:*)",
+      "Bash(jar -tf:*)",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\benja\\\\OneDrive\\\\Desktop\\\\hytale\\\\JET\" -Recurse -Filter \"*.log\")",
+      "Bash(Sort-Object LastWriteTime -Descending)",
+      "Bash(Select-Object -First 5)",
+      "Bash(Get-Content $_FullName -Tail 50 })",
+      "Bash(jar -xf:*)",
+      "Bash(./gradlew clean:*)",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\benja\\\\AppData\\\\Roaming\\\\Hytale\\\\UserData\\\\Logs\" -Filter \"*.log\")",
+      "Bash(Select-Object -First 1)",
+      "Bash(ForEach-Object { Get-Content $_FullName -Tail 100 })"
+    ]
+  }
+}

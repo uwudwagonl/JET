@@ -32,7 +32,7 @@ public class RecipeRegistry {
 
         // DEBUG: List all methods on CraftingRecipe
         try {
-            java.nio.file.Path logsDir = java.nio.file.Paths.get(System.getProperty("user.home"), "AppData", "Roaming", "Hytale", "UserData", "Logs");
+            java.nio.file.Path logsDir = getLogsDirectory();
             java.nio.file.Files.createDirectories(logsDir);
             java.io.FileWriter methodsFile = new java.io.FileWriter(logsDir.resolve("JET_methods.txt").toFile());
             methodsFile.write("=== All CraftingRecipe Methods ===\n");
@@ -101,7 +101,7 @@ public class RecipeRegistry {
 
         // Write debug info to file
         try {
-            java.nio.file.Path logsDir = java.nio.file.Paths.get(System.getProperty("user.home"), "AppData", "Roaming", "Hytale", "UserData", "Logs");
+            java.nio.file.Path logsDir = getLogsDirectory();
             java.nio.file.Files.createDirectories(logsDir);
             java.io.FileWriter fw = new java.io.FileWriter(logsDir.resolve("JET_debug.txt").toFile());
             fw.write("=== JET Recipe Registry Debug ===\n");
@@ -334,5 +334,24 @@ public class RecipeRegistry {
     
     public boolean hasUsageRecipes(String itemId) {
         return usageRecipes.containsKey(itemId) && !usageRecipes.get(itemId).isEmpty();
+    }
+
+    /**
+     * Get cross-platform logs directory for Hytale
+     */
+    private static java.nio.file.Path getLogsDirectory() {
+        String os = System.getProperty("os.name").toLowerCase();
+        String userHome = System.getProperty("user.home");
+
+        if (os.contains("win")) {
+            // Windows: %APPDATA%\Roaming\Hytale\UserData\Logs
+            return java.nio.file.Paths.get(userHome, "AppData", "Roaming", "Hytale", "UserData", "Logs");
+        } else if (os.contains("mac")) {
+            // macOS: ~/Library/Application Support/Hytale/UserData/Logs
+            return java.nio.file.Paths.get(userHome, "Library", "Application Support", "Hytale", "UserData", "Logs");
+        } else {
+            // Linux: ~/.local/share/Hytale/UserData/Logs
+            return java.nio.file.Paths.get(userHome, ".local", "share", "Hytale", "UserData", "Logs");
+        }
     }
 }

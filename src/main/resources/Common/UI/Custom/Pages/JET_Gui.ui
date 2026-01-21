@@ -3,14 +3,29 @@ $C = "../Common.ui";
 $C.@PageOverlay {
 
   $C.@Container {
-    Anchor: (Width: 1100, Height: 650);
+    Anchor: (Width: 1120, Height: 700);
 
     #Title {
       Group {
-        $C.@Title {
-          @Text = "Just Enough Tales";
+        LayoutMode: Top;
+
+        Group {
+          $C.@Title {
+            @Text = "Just Enough Tales";
+          }
+          $C.@HeaderSearch {}
         }
-        $C.@HeaderSearch {}
+
+        Label #SearchHint {
+          Text: "Search tip: Use @mod to filter by namespace, -term to exclude";
+          Style: (
+            FontSize: 11,
+            TextColor: #888888,
+            HorizontalAlignment: Center
+          );
+          Padding: (Top: 2, Bottom: 5);
+          Anchor: (Height: 18);
+        }
       }
     }
 
@@ -20,7 +35,63 @@ $C.@PageOverlay {
       Group #ItemSection {
         FlexWeight: 2;
         LayoutMode: Top;
-        Padding: (Left: 10);
+        Padding: (Left: 10, Right: 5);
+
+        Group #FilterSection {
+          LayoutMode: Left;
+          Padding: (Left: 8, Right: 8, Top: 8, Bottom: 5);
+          Background: (Color: #1a1a1a(0.4));
+          Anchor: (Height: 50);
+
+          TextButton #FilterTool {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 5);
+            Text: "Tools";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+          TextButton #FilterWeapon {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 5);
+            Text: "Weapons";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+          TextButton #FilterArmor {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 5);
+            Text: "Armor";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+          TextButton #FilterConsumable {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 5);
+            Text: "Consumables";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+          TextButton #FilterBlock {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 5);
+            Text: "Blocks";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+          TextButton #FilterCraftable {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 5);
+            Text: "Craftable";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+          TextButton #FilterNonCraftable {
+            FlexWeight: 1;
+            Anchor: (Height: 36, Right: 10);
+            Text: "Non-Craftable";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+
+          TextButton #ClearFilters {
+            Anchor: (Width: 70, Height: 36);
+            Text: "Clear";
+            Style: $C.@SecondaryTextButtonStyle;
+          }
+        }
 
         Group #ItemCardContainer {
           FlexWeight: 1;
@@ -31,70 +102,164 @@ $C.@PageOverlay {
             LayoutMode: Top;
           }
         }
+
+        Group #ItemPagination {
+          LayoutMode: Left;
+          Padding: (Top: 5, Bottom: 5);
+          Anchor: (Height: 45);
+
+          TextButton #PrevItemPage {
+            Anchor: (Width: 70, Height: 35);
+            Text: "Prev";
+            Style: TextButtonStyle(
+              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true)),
+              Hovered: (Background: #3a3a3a(0.9)),
+              Pressed: (Background: #4a4a4a(1.0)),
+              Sounds: $C.@ButtonSounds
+            );
+            Background: #2a2a2a(0.6);
+            Padding: (Full: 8);
+            Visible: false;
+          }
+
+          Label #ItemPageInfo {
+            FlexWeight: 1;
+            Style: (
+              FontSize: 13,
+              TextColor: #aaaaaa,
+              HorizontalAlignment: Center,
+              VerticalAlignment: Center
+            );
+            Padding: (Full: 8);
+            Anchor: (Left: 10, Right: 10);
+          }
+
+          TextButton #NextItemPage {
+            Anchor: (Width: 70, Height: 35);
+            Text: "Next";
+            Style: TextButtonStyle(
+              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true)),
+              Hovered: (Background: #3a3a3a(0.9)),
+              Pressed: (Background: #4a4a4a(1.0)),
+              Sounds: $C.@ButtonSounds
+            );
+            Background: #2a2a2a(0.6);
+            Padding: (Full: 8);
+            Visible: false;
+          }
+        }
       }
 
       Group #RecipePanel {
         FlexWeight: 1;
         LayoutMode: Top;
-        Padding: (Left: 15);
+        Padding: (Left: 5);
         Visible: false;
 
         Group #SelectedItemBar {
-          LayoutMode: Left;
-          Padding: (Full: 8, Bottom: 12);
-          Background: (Color: #252525(0.95));
+          LayoutMode: Top;
+          Padding: (Full: 10, Bottom: 5);
+          Background: (Color: #1a1a1a(0.6));
 
-          ItemIcon #SelectedIcon {
-            Anchor: (Width: 40, Height: 40);
-            Visible: true;
-          }
+          Group #ItemHeader {
+            LayoutMode: Left;
 
-          Label #SelectedName {
-            Style: (
-              FontSize: 16,
-              RenderBold: true,
-              TextColor: #ffffff
-            );
-            Padding: (Left: 10);
-            FlexWeight: 1;
+            Group {
+              LayoutMode: Left;
+              FlexWeight: 1;
+
+              ItemIcon #SelectedIcon {
+                Anchor: (Width: 48, Height: 48);
+                Visible: true;
+              }
+
+              Group {
+                LayoutMode: Top;
+                Padding: (Left: 10);
+
+                Label #SelectedName {
+                  Style: (
+                    FontSize: 18,
+                    RenderBold: true,
+                    TextColor: #ffffff
+                  );
+                }
+
+                Label #RecipeInfo {
+                  Style: (
+                    FontSize: 12,
+                    TextColor: #888888
+                  );
+                }
+              }
+            }
+
+            TextButton #PinButton {
+              Anchor: (Width: 90, Height: 40);
+              Text: "Pin";
+              Style: TextButtonStyle(
+                Default: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+                Hovered: (LabelStyle: (FontSize: 15, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.8)),
+                Pressed: (LabelStyle: (FontSize: 15, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.9)),
+                Sounds: $C.@ButtonSounds
+              );
+              Background: #2a2a2a(0.6);
+              Padding: (Full: 8);
+            }
           }
         }
 
-        Group #ModeToggle {
+        Group #SectionButtons {
           LayoutMode: Left;
-          Padding: (Top: 6, Bottom: 6);
-          Anchor: (Height: 35);
+          Padding: (Top: 10, Bottom: 5);
+          Anchor: (Height: 50);
 
           TextButton #ToggleModeButton {
-            Anchor: (Width: 200, Height: 28);
-            Text: "Toggle: Craft ↔ Uses";
+            Anchor: (Width: 110, Height: 40);
+            Text: "Craft";
             Style: TextButtonStyle(
-              Default: (LabelStyle: (FontSize: 11, TextColor: #ffffff)),
-              Hovered: (Background: #3a3a3a(0.8)),
-              Pressed: (Background: #4a4a4a(0.9)),
+              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+              Hovered: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.8)),
+              Pressed: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.9)),
               Sounds: $C.@ButtonSounds
             );
-            Background: #2a2a2a(0.7);
-            Padding: (Full: 4);
+            Background: #2a2a2a(0.6);
+            Padding: (Full: 8);
           }
 
-          Label {
-            Style: (
-              FontSize: 10,
-              TextColor: #666666
+          Group {
+            Anchor: (Width: 10);
+          }
+
+          TextButton #UsesButton {
+            Anchor: (Width: 110, Height: 40);
+            Text: "Usage";
+            Style: TextButtonStyle(
+              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+              Hovered: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.8)),
+              Pressed: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.9)),
+              Sounds: $C.@ButtonSounds
             );
-            Text: "Switch between crafting and usage recipes";
-            Padding: (Left: 10);
-            FlexWeight: 1;
+            Background: #2a2a2a(0.6);
+            Padding: (Full: 8);
           }
-        }
 
-        Label #RecipeInfo {
-          Style: (
-            FontSize: 14,
-            TextColor: #cccccc
-          );
-          Padding: (Top: 6, Bottom: 6);
+          Group {
+            Anchor: (Width: 10);
+          }
+
+          TextButton #ObtainedFromButton {
+            Anchor: (Width: 110, Height: 40);
+            Text: "Drops";
+            Style: TextButtonStyle(
+              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+              Hovered: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.8)),
+              Pressed: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.9)),
+              Sounds: $C.@ButtonSounds
+            );
+            Background: #2a2a2a(0.6);
+            Padding: (Full: 8);
+          }
         }
 
         Group #RecipeListContainer {
@@ -109,43 +274,46 @@ $C.@PageOverlay {
 
         Group #RecipePagination {
           LayoutMode: Left;
-          Padding: (Top: 10);
-          Anchor: (Height: 40);
+          Padding: (Top: 10, Bottom: 15);
+          Anchor: (Height: 50);
 
           TextButton #PrevRecipe {
-            Anchor: (Width: 80, Height: 35);
+            Anchor: (Width: 70, Height: 35);
             Text: "Prev";
             Style: TextButtonStyle(
-              Default: (LabelStyle: (FontSize: 12, TextColor: #ffffff)),
-              Hovered: (Background: #2a2a2a(0.8)),
-              Pressed: (Background: #3a3a3a(0.9)),
+              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true)),
+              Hovered: (Background: #3a3a3a(0.9)),
+              Pressed: (Background: #4a4a4a(1.0)),
               Sounds: $C.@ButtonSounds
             );
-            Background: #1a1a1a(0.6);
-            Padding: (Full: 6);
+            Background: #2a2a2a(0.6);
+            Padding: (Full: 8);
           }
 
           Label #PageInfo {
             FlexWeight: 1;
             Style: (
-              FontSize: 12,
-              TextColor: #888888,
-              HorizontalAlignment: Center
+              FontSize: 14,
+              TextColor: #ffffff,
+              HorizontalAlignment: Center,
+              VerticalAlignment: Center
             );
-            Padding: (Full: 6);
+            Background: #2a2a2a(0.6);
+            Padding: (Full: 8);
+            Anchor: (Left: 10, Right: 10);
           }
 
           TextButton #NextRecipe {
-            Anchor: (Width: 80, Height: 35);
+            Anchor: (Width: 70, Height: 35);
             Text: "Next";
             Style: TextButtonStyle(
-              Default: (LabelStyle: (FontSize: 12, TextColor: #ffffff)),
-              Hovered: (Background: #2a2a2a(0.8)),
-              Pressed: (Background: #3a3a3a(0.9)),
+              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true)),
+              Hovered: (Background: #3a3a3a(0.9)),
+              Pressed: (Background: #4a4a4a(1.0)),
               Sounds: $C.@ButtonSounds
             );
-            Background: #1a1a1a(0.6);
-            Padding: (Full: 6);
+            Background: #2a2a2a(0.6);
+            Padding: (Full: 8);
           }
         }
       }
