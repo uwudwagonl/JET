@@ -4,13 +4,16 @@ import com.hypixel.hytale.assetstore.event.LoadedAssetsEvent;
 import com.hypixel.hytale.assetstore.map.DefaultAssetMap;
 import com.hypixel.hytale.server.core.asset.type.item.config.CraftingRecipe;
 import com.hypixel.hytale.server.core.asset.type.item.config.Item;
+import com.hypixel.hytale.server.core.asset.type.item.config.ItemDropList;
 import com.hypixel.hytale.server.core.inventory.MaterialQuantity;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import dev.hytalemod.jet.command.JETCommand;
+import dev.hytalemod.jet.command.JETDropsCommand;
 import dev.hytalemod.jet.command.JETInfoCommand;
 import dev.hytalemod.jet.command.JETListCommand;
 import dev.hytalemod.jet.command.JETPinnedCommand;
+import dev.hytalemod.jet.registry.DropListRegistry;
 import dev.hytalemod.jet.registry.ItemRegistry;
 import dev.hytalemod.jet.registry.RecipeRegistry;
 import dev.hytalemod.jet.storage.PinnedItemsStorage;
@@ -30,11 +33,13 @@ public class JETPlugin extends JavaPlugin {
     private static JETPlugin instance;
     private ItemRegistry itemRegistry;
     private RecipeRegistry recipeRegistry;
+    private DropListRegistry dropListRegistry;
     private PinnedItemsStorage pinnedItemsStorage;
     private JETKeybindSystem keybindSystem;
 
     public static Map<String, Item> ITEMS = new HashMap<>();
     public static Map<String, CraftingRecipe> RECIPES = new HashMap<>();
+    public static Map<String, ItemDropList> DROP_LISTS = new HashMap<>();
     public static Map<String, List<String>> ITEM_TO_RECIPES = new HashMap<>();
     public static Map<String, List<String>> ITEM_FROM_RECIPES = new HashMap<>();
 
@@ -49,6 +54,7 @@ public class JETPlugin extends JavaPlugin {
         instance = this;
         itemRegistry = new ItemRegistry();
         recipeRegistry = new RecipeRegistry();
+        dropListRegistry = new DropListRegistry();
         pinnedItemsStorage = new PinnedItemsStorage();
         pinnedItemsStorage.load();
 
@@ -56,11 +62,13 @@ public class JETPlugin extends JavaPlugin {
         // keybindSystem = new JETKeybindSystem();
         // getEntityStoreRegistry().registerSystem(keybindSystem);
         getCommandRegistry().registerCommand(new JETCommand());
+        getCommandRegistry().registerCommand(new JETDropsCommand());
         getCommandRegistry().registerCommand(new JETInfoCommand());
         getCommandRegistry().registerCommand(new JETListCommand());
         getCommandRegistry().registerCommand(new JETPinnedCommand());
         getEventRegistry().register(LoadedAssetsEvent.class, Item.class, JETPlugin::onItemsLoaded);
         getEventRegistry().register(LoadedAssetsEvent.class, CraftingRecipe.class, JETPlugin::onRecipesLoaded);
+        getEventRegistry().register(LoadedAssetsEvent.class, ItemDropList.class, JETPlugin::onDropListsLoaded);
 
         getLogger().at(Level.INFO).log("[JET] Plugin enabled - v" + VERSION);
         getLogger().at(Level.INFO).log("[JET] Use /jet or /j to open item browser, /pinned or /p for pinned items");
@@ -178,5 +186,23 @@ public class JETPlugin extends JavaPlugin {
 
     public JETKeybindSystem getKeybindSystem() {
         return keybindSystem;
+    }
+
+    public DropListRegistry getDropListRegistry() {
+        return dropListRegistry;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void onDropListsLoaded(LoadedAssetsEvent<String, ItemDropList, DefaultAssetMap<String, ItemDropList>> event) {
+        Map<String, ItemDropList> dropLists = event.getLoadedAssets();
+
+        if (dropLists == null || dropLists.isEmpty()) {
+            instance.getLogger().at(Level.WARNING).log("[JET] No drop lists in LoadedAssetsEvent");
+            return;
+        }
+
+        DROP_LISTS = new HashMap<>(dropLists);
+        instance.dropListRegistry.reload(dropLists);
+        instance.getLogger().at(Level.INFO).log("[JET] Loaded " + instance.dropListRegistry.size() + " drop lists");
     }
 }

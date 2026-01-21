@@ -41,9 +41,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
     private String searchQuery;
     private String selectedItem;
-    private String activeSection; // "craft" or "usage"
+    private String activeSection; // "craft", "usage", or "drops"
     private int craftPage;
     private int usagePage;
+    private int dropsPage;
     private int itemPage; // Pagination for item list
     private Set<ItemCategory> activeFilters; // Active category filters
 
@@ -54,6 +55,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         this.activeSection = "craft";
         this.craftPage = 0;
         this.usagePage = 0;
+        this.dropsPage = 0;
         this.itemPage = 0;
         this.activeFilters = new HashSet<>();
     }
@@ -82,6 +84,14 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 CustomUIEventBindingType.Activating,
                 "#RecipePanel #UsesButton",
                 EventData.of("ToggleMode", "usage"),
+                false
+        );
+
+        // Obtained From button - switches to drops mode
+        events.addEventBinding(
+                CustomUIEventBindingType.Activating,
+                "#RecipePanel #ObtainedFromButton",
+                EventData.of("ToggleMode", "drops"),
                 false
         );
 
@@ -177,12 +187,13 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             needsRecipeUpdate = true;
         }
 
-        // Handle toggle mode - now separate buttons for craft/usage
+        // Handle toggle mode - now separate buttons for craft/usage/drops
         if (data.toggleMode != null && !data.toggleMode.isEmpty()) {
-            if ("craft".equals(data.toggleMode) || "usage".equals(data.toggleMode)) {
+            if ("craft".equals(data.toggleMode) || "usage".equals(data.toggleMode) || "drops".equals(data.toggleMode)) {
                 this.activeSection = data.toggleMode;
                 this.craftPage = 0;
                 this.usagePage = 0;
+                this.dropsPage = 0;
                 needsRecipeUpdate = true;
             }
         }
@@ -191,6 +202,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.activeSection = data.activeSection;
             this.craftPage = 0;
             this.usagePage = 0;
+            this.dropsPage = 0;
             needsRecipeUpdate = true;
         }
 
@@ -202,9 +214,14 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
 
         if (data.pageChange != null) {
-            List<String> recipeIds = "craft".equals(this.activeSection)
-                    ? JETPlugin.ITEM_TO_RECIPES.getOrDefault(this.selectedItem, Collections.emptyList())
-                    : JETPlugin.ITEM_FROM_RECIPES.getOrDefault(this.selectedItem, Collections.emptyList());
+            List<String> recipeIds;
+            if ("craft".equals(this.activeSection)) {
+                recipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(this.selectedItem, Collections.emptyList());
+            } else if ("usage".equals(this.activeSection)) {
+                recipeIds = JETPlugin.ITEM_FROM_RECIPES.getOrDefault(this.selectedItem, Collections.emptyList());
+            } else {
+                recipeIds = JETPlugin.getInstance().getDropListRegistry().getDropSourcesForItem(this.selectedItem);
+            }
             int totalPages = (int) Math.ceil((double) recipeIds.size() / RECIPES_PER_PAGE);
 
             if ("prev".equals(data.pageChange)) {
@@ -214,6 +231,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 } else if ("usage".equals(this.activeSection) && usagePage > 0) {
                     usagePage--;
                     needsRecipeUpdate = true;
+                } else if ("drops".equals(this.activeSection) && dropsPage > 0) {
+                    dropsPage--;
+                    needsRecipeUpdate = true;
                 }
             } else if ("next".equals(data.pageChange)) {
                 if ("craft".equals(this.activeSection) && craftPage < totalPages - 1) {
@@ -221,6 +241,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                     needsRecipeUpdate = true;
                 } else if ("usage".equals(this.activeSection) && usagePage < totalPages - 1) {
                     usagePage++;
+                    needsRecipeUpdate = true;
+                } else if ("drops".equals(this.activeSection) && dropsPage < totalPages - 1) {
+                    dropsPage++;
                     needsRecipeUpdate = true;
                 }
             }
@@ -435,9 +458,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         // Get recipe IDs from global maps
         List<String> craftRecipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(selectedItem, Collections.emptyList());
         List<String> usageRecipeIds = JETPlugin.ITEM_FROM_RECIPES.getOrDefault(selectedItem, Collections.emptyList());
+        List<String> dropSources = JETPlugin.getInstance().getDropListRegistry().getDropSourcesForItem(selectedItem);
 
         // Set recipe info label
-        String recipeInfo = "Craft: " + craftRecipeIds.size() + " | Uses: " + usageRecipeIds.size();
+        String recipeInfo = "Craft: " + craftRecipeIds.size() + " | Uses: " + usageRecipeIds.size() + " | Drops: " + dropSources.size();
         cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw(recipeInfo));
 
         // Update pin button text based on current pin status
@@ -447,8 +471,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
         if ("craft".equals(activeSection)) {
             buildCraftSection(ref, cmd, events, craftRecipeIds);
-        } else {
+        } else if ("usage".equals(activeSection)) {
             buildUsageSection(ref, cmd, events, usageRecipeIds);
+        } else {
+            buildDropsSection(ref, cmd, events, dropSources);
         }
     }
 
@@ -510,6 +536,170 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
             buildRecipeDisplay(cmd, recipe, rSel, ref);
         }
+    }
+
+    private void buildDropsSection(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, List<String> dropListIds) {
+        cmd.clear("#RecipePanel #RecipeListContainer #RecipeList");
+
+        if (dropListIds.isEmpty()) {
+            cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw("No drop sources"));
+            return;
+        }
+
+        int totalPages = (int) Math.ceil((double) dropListIds.size() / RECIPES_PER_PAGE);
+        if (dropsPage >= totalPages) dropsPage = totalPages - 1;
+        if (dropsPage < 0) dropsPage = 0;
+
+        int start = dropsPage * RECIPES_PER_PAGE;
+        int end = Math.min(start + RECIPES_PER_PAGE, dropListIds.size());
+
+        cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw((dropsPage + 1) + " / " + totalPages));
+
+        for (int i = start; i < end; i++) {
+            String dropListId = dropListIds.get(i);
+            int idx = i - start;
+
+            // Use the recipe entry UI as a template
+            cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
+            String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
+
+            // Format the drop list ID for display
+            String displayName = formatDropListName(dropListId);
+            String dropType = getDropType(dropListId);
+
+            // Set the title WITHOUT emoji icon
+            cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(displayName + " (" + dropType + ")"));
+
+            // Hide both input and output sections for now
+            cmd.set(rSel + "[1].Visible", false);  // Hide Input group
+            cmd.set(rSel + "[2].Visible", false);  // Hide Output group
+        }
+    }
+
+    private String getDropType(String dropListId) {
+        if (dropListId.contains("Ore_")) return "Mining";
+        if (dropListId.contains("Chest")) return "Chest Loot";
+        if (dropListId.contains("Plant_") || dropListId.contains("Crop_")) return "Farming";
+        return "Drop";
+    }
+
+    private String getDropTypeIcon(String dropType) {
+        switch (dropType) {
+            case "Mining": return "⛏";
+            case "Chest Loot": return "📦";
+            case "Farming": return "🌾";
+            default: return "💎";
+        }
+    }
+
+    private String getEntityIdFromDropList(String dropListId) {
+        // Extract entity ID from drop list names
+        // Pattern: "Zone1_Trork_Tier3" -> "Trork"
+        // Pattern: "Drop_Crow" -> "Crow"
+        // Pattern: "Drop_Rex_Cave" -> "Rex_Cave"
+
+        if (dropListId == null || dropListId.isEmpty()) {
+            return null;
+        }
+
+        // Handle Zone-based drops
+        if (dropListId.startsWith("Zone")) {
+            String[] parts = dropListId.split("_");
+            if (parts.length >= 3) {
+                // Entity name is everything between zone and tier
+                StringBuilder entityName = new StringBuilder();
+                for (int i = 1; i < parts.length - 1; i++) {
+                    if (i > 1) entityName.append("_");
+                    entityName.append(parts[i]);
+                }
+                return entityName.toString();
+            }
+        }
+
+        // Handle "Drop_EntityName" pattern
+        if (dropListId.startsWith("Drop_")) {
+            return dropListId.substring(5);  // Remove "Drop_" prefix
+        }
+
+        // For other types (ores, chests, etc.), no entity icon
+        return null;
+    }
+
+    private String formatDropListName(String dropListId) {
+        // Convert "Ore_Gold_Stone_Gathering_Breaking_DropList" to "Gold Ore (Stone)"
+        // Convert "Zone1_Trork_Tier3" to "Trork [Z1] [T3]"
+        // Convert "Drop_Crow" to "Crow"
+
+        if (dropListId == null || dropListId.isEmpty()) {
+            return dropListId;
+        }
+
+        // Handle zone-based drops (mob/entity drops)
+        // Pattern: Zone1_EntityName_Tier3 -> "EntityName [Z1] [T3]"
+        if (dropListId.startsWith("Zone")) {
+            String[] parts = dropListId.split("_");
+            if (parts.length >= 3) {
+                String zone = parts[0].replace("Zone", "[Z") + "]";  // Zone1 -> [Z1]
+                String tier = parts[parts.length - 1].replace("Tier", "[T") + "]";  // Tier3 -> [T3]
+
+                // Entity name is everything between zone and tier
+                StringBuilder entityName = new StringBuilder();
+                for (int i = 1; i < parts.length - 1; i++) {
+                    if (i > 1) entityName.append(" ");
+                    entityName.append(parts[i]);
+                }
+
+                return entityName.toString() + " " + zone + " " + tier;
+            }
+        }
+
+        // Handle "Drop_EntityName" pattern
+        if (dropListId.startsWith("Drop_")) {
+            String entityName = dropListId.substring(5);  // Remove "Drop_"
+            return entityName.replace("_", " ");
+        }
+
+        // Remove the common suffix
+        String cleaned = dropListId.replace("_Gathering_Breaking_DropList", "")
+                                   .replace("_Gathering_Soft_DropList", "");
+
+        // Split by underscore
+        String[] parts = cleaned.split("_");
+
+        if (parts.length == 0) {
+            return dropListId;
+        }
+
+        // Handle different patterns
+        if (parts[0].equals("Ore")) {
+            // Pattern: Ore_Material_RockType -> "Material Ore (RockType)"
+            if (parts.length >= 3) {
+                String material = parts[1];
+                String rockType = parts[2];
+                return material + " Ore (" + rockType + ")";
+            } else if (parts.length == 2) {
+                return parts[1] + " Ore";
+            }
+        } else if (parts[0].equals("Furniture")) {
+            // Pattern: Furniture_Type_Chest_Size -> "Type Chest (Size)"
+            if (parts.length >= 4 && parts[parts.length - 2].equals("Chest")) {
+                String size = parts[parts.length - 1];
+                StringBuilder typeName = new StringBuilder();
+                for (int i = 1; i < parts.length - 2; i++) {
+                    if (i > 1) typeName.append(" ");
+                    typeName.append(parts[i]);
+                }
+                return typeName.toString() + " Chest (" + size + ")";
+            }
+        } else if (parts[0].equals("Plant")) {
+            // Pattern: Plant_Crop_Apple_Block -> "Apple Crop"
+            if (parts.length >= 3) {
+                return parts[2] + " " + parts[1];
+            }
+        }
+
+        // Fallback: just join with spaces
+        return String.join(" ", parts);
     }
 
     private void buildRecipeDisplay(UICommandBuilder cmd, CraftingRecipe recipe, String rSel, Ref<EntityStore> ref) {

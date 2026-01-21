@@ -215,8 +215,8 @@ $C.@PageOverlay {
           Anchor: (Height: 50);
 
           TextButton #ToggleModeButton {
-            Anchor: (Width: 180, Height: 40);
-            Text: "How to Craft";
+            Anchor: (Width: 110, Height: 40);
+            Text: "Craft";
             Style: TextButtonStyle(
               Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
               Hovered: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.8)),
@@ -232,8 +232,25 @@ $C.@PageOverlay {
           }
 
           TextButton #UsesButton {
-            Anchor: (Width: 180, Height: 40);
-            Text: "Used In";
+            Anchor: (Width: 110, Height: 40);
+            Text: "Usage";
+            Style: TextButtonStyle(
+              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+              Hovered: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.8)),
+              Pressed: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.9)),
+              Sounds: $C.@ButtonSounds
+            );
+            Background: #2a2a2a(0.6);
+            Padding: (Full: 8);
+          }
+
+          Group {
+            Anchor: (Width: 10);
+          }
+
+          TextButton #ObtainedFromButton {
+            Anchor: (Width: 110, Height: 40);
+            Text: "Drops";
             Style: TextButtonStyle(
               Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
               Hovered: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.8)),

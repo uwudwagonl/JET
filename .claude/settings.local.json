@@ -18,7 +18,11 @@
       "Bash(Sort-Object LastWriteTime -Descending)",
       "Bash(Select-Object -First 5)",
       "Bash(Get-Content $_FullName -Tail 50 })",
-      "Bash(jar -xf:*)"
+      "Bash(jar -xf:*)",
+      "Bash(./gradlew clean:*)",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\benja\\\\AppData\\\\Roaming\\\\Hytale\\\\UserData\\\\Logs\" -Filter \"*.log\")",
+      "Bash(Select-Object -First 1)",
+      "Bash(ForEach-Object { Get-Content $_FullName -Tail 100 })"
     ]
   }
 }
