@@ -22,7 +22,16 @@
       "Bash(./gradlew clean:*)",
       "Bash(Get-ChildItem \"C:\\\\Users\\\\benja\\\\AppData\\\\Roaming\\\\Hytale\\\\UserData\\\\Logs\" -Filter \"*.log\")",
       "Bash(Select-Object -First 1)",
-      "Bash(ForEach-Object { Get-Content $_FullName -Tail 100 })"
+      "Bash(ForEach-Object { Get-Content $_FullName -Tail 100 })",
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(java:*)",
+      "Bash(./gradlew compileJava:*)",
+      "Bash(./gradlew shadowJar:*)",
+      "Bash(dir:*)",
+      "Bash(where:*)",
+      "Bash(powershell:*)",
+      "Bash(Select-Object -Last 50)"
     ]
   }
 }

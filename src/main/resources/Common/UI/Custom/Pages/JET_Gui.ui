@@ -93,6 +93,27 @@ $C.@PageOverlay {
           }
         }
 
+        Group #OptionsBar {
+          LayoutMode: Left;
+          Padding: (Left: 8, Right: 8, Top: 5, Bottom: 5);
+          Background: (Color: #1a1a1a(0.4));
+          Anchor: (Height: 40);
+
+          $C.@CheckBoxWithLabel #ShowSalvager {
+            @Text = "Show Salvager Recipes";
+            Padding: (Right: 15);
+          }
+
+          $C.@CheckBoxWithLabel #ShowHiddenItems {
+            @Text = "Show Hidden Items";
+            Padding: (Right: 15);
+          }
+
+          Group {
+            FlexWeight: 1;
+          }
+        }
+
         Group #ItemCardContainer {
           FlexWeight: 1;
           LayoutMode: TopScrolling;
@@ -164,47 +185,71 @@ $C.@PageOverlay {
           Group #ItemHeader {
             LayoutMode: Left;
 
+            ItemIcon #SelectedIcon {
+              Anchor: (Width: 96, Height: 96);
+              Visible: true;
+            }
+
             Group {
-              LayoutMode: Left;
+              LayoutMode: Top;
+              Padding: (Left: 10);
               FlexWeight: 1;
 
-              ItemIcon #SelectedIcon {
-                Anchor: (Width: 48, Height: 48);
-                Visible: true;
+              Label #SelectedName {
+                Style: (
+                  FontSize: 30,
+                  RenderBold: true,
+                  TextColor: #ffffff
+                );
               }
 
-              Group {
-                LayoutMode: Top;
-                Padding: (Left: 10);
+              Label #RecipeInfo {
+                Style: (
+                  FontSize: 12,
+                  TextColor: #aaaaaa
+                );
+              }
 
-                Label #SelectedName {
-                  Style: (
-                    FontSize: 18,
-                    RenderBold: true,
-                    TextColor: #ffffff
-                  );
+              Group #GiveButtonGroup {
+                LayoutMode: Left;
+                Padding: (Top: 8);
+                Visible: false;
+
+                TextButton #GiveItemButton {
+                  Anchor: (Width: 90, Height: 24);
+                  Text: "Give Item";
+                  Style: $C.@SmallSecondaryTextButtonStyle;
                 }
 
-                Label #RecipeInfo {
-                  Style: (
-                    FontSize: 12,
-                    TextColor: #888888
-                  );
+                Group {
+                  Anchor: (Width: 8);
+                }
+
+                TextButton #GiveItemStackButton {
+                  Anchor: (Width: 100, Height: 24);
+                  Text: "Give Stack";
+                  Style: $C.@SmallSecondaryTextButtonStyle;
                 }
               }
             }
 
             TextButton #PinButton {
-              Anchor: (Width: 90, Height: 40);
+              Anchor: (Width: 70, Height: 30);
               Text: "Pin";
-              Style: TextButtonStyle(
-                Default: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
-                Hovered: (LabelStyle: (FontSize: 15, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.8)),
-                Pressed: (LabelStyle: (FontSize: 15, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.9)),
-                Sounds: $C.@ButtonSounds
+              Style: $C.@SmallSecondaryTextButtonStyle;
+            }
+          }
+
+          Group #ItemStatsSection {
+            LayoutMode: Top;
+            Padding: (Top: 10);
+            Visible: false;
+
+            Label #ItemStats {
+              Style: (
+                FontSize: 11,
+                TextColor: #aaccff
               );
-              Background: #2a2a2a(0.6);
-              Padding: (Full: 8);
             }
           }
         }

@@ -96,7 +96,7 @@ public class JETKeybindHandler {
             JETGui gui = new JETGui(playerRef, CustomPageLifetime.CanDismiss, "");
             player.getPageManager().openCustomPage(ref, store, gui);
             jetOpenState.put(playerRef.getUuid(), true);
-            
+
             JETPlugin.getInstance().getLogger().at(Level.INFO).log("[JET] Opened GUI for " + playerRef.getUsername());
         });
     }

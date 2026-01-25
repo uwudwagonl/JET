@@ -67,4 +67,23 @@ public class CategoryUtil {
         }
         return getCategories(item).contains(category);
     }
+
+    /**
+     * Get the primary category for an item (for sorting purposes)
+     * Priority: WEAPON > TOOL > ARMOR > CONSUMABLE > BLOCK > CRAFTABLE > NON_CRAFTABLE
+     */
+    public static ItemCategory getPrimaryCategory(Item item) {
+        Set<ItemCategory> categories = getCategories(item);
+
+        // Return first matching category in priority order
+        if (categories.contains(ItemCategory.WEAPON)) return ItemCategory.WEAPON;
+        if (categories.contains(ItemCategory.TOOL)) return ItemCategory.TOOL;
+        if (categories.contains(ItemCategory.ARMOR)) return ItemCategory.ARMOR;
+        if (categories.contains(ItemCategory.CONSUMABLE)) return ItemCategory.CONSUMABLE;
+        if (categories.contains(ItemCategory.BLOCK)) return ItemCategory.BLOCK;
+        if (categories.contains(ItemCategory.CRAFTABLE)) return ItemCategory.CRAFTABLE;
+        if (categories.contains(ItemCategory.NON_CRAFTABLE)) return ItemCategory.NON_CRAFTABLE;
+
+        return null; // Uncategorized
+    }
 }

@@ -58,3 +58,8 @@ desktop.ini
 
 # claude
 *.claude
+
+# nul file i cant delete
+*.nul
+*nul
+nul

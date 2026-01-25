@@ -47,7 +47,7 @@ public class JETCommand extends AbstractCommand {
         
         return CompletableFuture.runAsync(() -> {
             PlayerRef playerRef = (PlayerRef) store.getComponent(ref, PlayerRef.getComponentType());
-            
+
             if (playerRef != null) {
                 JETGui gui = new JETGui(playerRef, CustomPageLifetime.CanDismiss, "");
                 player.getPageManager().openCustomPage(ref, store, gui);

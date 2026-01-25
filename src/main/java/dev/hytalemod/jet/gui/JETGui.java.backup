@@ -88,18 +88,18 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 false
         );
 
-        // Checkbox bindings for show hidden items and salvager recipes
+        // Toggle button bindings for show hidden items and salvager recipes
         events.addEventBinding(
-                CustomUIEventBindingType.ValueChanged,
-                "#ShowHiddenItems #CheckBox",
-                EventData.of("@ShowHiddenItems", "#ShowHiddenItems #CheckBox.Value"),
+                CustomUIEventBindingType.Activating,
+                "#ShowHiddenItems",
+                EventData.of("@ToggleShowHidden", "true"),
                 false
         );
 
         events.addEventBinding(
-                CustomUIEventBindingType.ValueChanged,
-                "#ShowSalvager #CheckBox",
-                EventData.of("@ShowSalvagerRecipes", "#ShowSalvager #CheckBox.Value"),
+                CustomUIEventBindingType.Activating,
+                "#ShowSalvager",
+                EventData.of("@ToggleSalvager", "true"),
                 false
         );
 
@@ -231,16 +231,16 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             } catch (Exception ignored) {}
         }
 
-        // Handle show hidden items checkbox
-        if (data.showHiddenItems != null && data.showHiddenItems != this.showHiddenItems) {
-            this.showHiddenItems = data.showHiddenItems;
+        // Handle show hidden items toggle
+        if (data.toggleShowHidden != null) {
+            this.showHiddenItems = !this.showHiddenItems;
             this.itemPage = 0;
             needsItemUpdate = true;
         }
 
-        // Handle show salvager recipes checkbox
-        if (data.showSalvagerRecipes != null && data.showSalvagerRecipes != this.showSalvagerRecipes) {
-            this.showSalvagerRecipes = data.showSalvagerRecipes;
+        // Handle show salvager recipes toggle
+        if (data.toggleSalvager != null) {
+            this.showSalvagerRecipes = !this.showSalvagerRecipes;
             needsRecipeUpdate = true;
         }
 
@@ -351,6 +351,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     }
 
     private void buildItemList(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
+        // Update toggle button states
+        cmd.set("#ShowHiddenItems.Text", showHiddenItems ? "Hide Hidden" : "Show Hidden");
+        cmd.set("#ShowSalvager.Text", showSalvagerRecipes ? "Hide Salvager" : "Show Salvager");
+
         List<Map.Entry<String, Item>> results = new ArrayList<>();
 
         // Get filtered items by mod if filter is active
@@ -432,21 +436,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             cmd.append("#ItemCards[" + row + "]", "Pages/JET_ItemIcon.ui");
             String sel = "#ItemCards[" + row + "][" + col + "]";
 
-            // Set quality background texture on the AssetImage wrapper
-            try {
-                int qualityIndex = item.getQualityIndex();
-                ItemQuality quality = ItemQuality.getAssetMap().getAsset(qualityIndex);
-                if (quality != null) {
-                    String slotTexture = quality.getSlotTexture();
-                    if (slotTexture != null && !slotTexture.isEmpty()) {
-                        cmd.set(sel + ".AssetPath", slotTexture);
-                    }
-                }
-            } catch (Exception e) {
-                // Ignore if quality system not available
-            }
-
-            cmd.set(sel + " #ItemButton #ItemIcon.ItemId", key);
+            cmd.set(sel + " #ItemIcon.ItemId", key);
 
             String displayName = getDisplayName(item, language);
             if (displayName.length() > 14) {
@@ -455,11 +445,11 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
             // Apply quality color to item name
             Message nameMessage = getColoredItemName(item, displayName);
-            cmd.set(sel + " #ItemButton #ItemName.TextSpans", nameMessage);
-            cmd.set(sel + " #ItemButton.TooltipTextSpans", buildTooltip(key, item, language));
+            cmd.set(sel + " #ItemName.TextSpans", nameMessage);
+            cmd.set(sel + ".TooltipTextSpans", buildTooltip(key, item, language));
 
-            events.addEventBinding(CustomUIEventBindingType.Activating, sel + " #ItemButton", EventData.of("SelectedItem", key), false);
-            events.addEventBinding(CustomUIEventBindingType.RightClicking, sel + " #ItemButton", EventData.of("GiveItem", key), false);
+            events.addEventBinding(CustomUIEventBindingType.Activating, sel, EventData.of("SelectedItem", key), false);
+            events.addEventBinding(CustomUIEventBindingType.RightClicking, sel, EventData.of("GiveItem", key), false);
 
             col++;
             if (col >= gridColumns) {
@@ -735,6 +725,24 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         Message coloredName = getColoredItemName(item, displayName);
         cmd.set("#RecipePanel #SelectedName.TextSpans", coloredName);
 
+        // Add item description if available
+        try {
+            String descKey = item.getDescriptionTranslationKey();
+            if (descKey != null && !descKey.isEmpty()) {
+                String description = I18nModule.get().getMessage(language, descKey);
+                if (description != null && !description.isEmpty()) {
+                    cmd.set("#RecipePanel #ItemDescription.TextSpans", Message.raw(description));
+                    cmd.set("#RecipePanel #ItemDescription.Visible", true);
+                } else {
+                    cmd.set("#RecipePanel #ItemDescription.Visible", false);
+                }
+            } else {
+                cmd.set("#RecipePanel #ItemDescription.Visible", false);
+            }
+        } catch (Exception e) {
+            cmd.set("#RecipePanel #ItemDescription.Visible", false);
+        }
+
         // Add item stats display
         buildItemStats(item, cmd, language);
 
@@ -747,30 +755,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         String recipeInfo = "Craft: " + craftRecipeIds.size() + " | Uses: " + usageRecipeIds.size() + " | Drops: " + dropSources.size();
         cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw(recipeInfo));
 
-        // Check if player can use give buttons (Creative or OP)
-        Player player = store.getComponent(ref, Player.getComponentType());
-        boolean canGive = false;
-        if (player != null) {
-            com.hypixel.hytale.protocol.GameMode gameMode = player.getGameMode();
-            boolean isCreative = gameMode != null && gameMode.name().equals("Creative");
-
-            boolean isOp = false;
-            try {
-                com.hypixel.hytale.server.core.entity.UUIDComponent uuidComponent =
-                    store.getComponent(ref, com.hypixel.hytale.server.core.entity.UUIDComponent.getComponentType());
-                if (uuidComponent != null) {
-                    com.hypixel.hytale.server.core.permissions.PermissionsModule perms =
-                        com.hypixel.hytale.server.core.permissions.PermissionsModule.get();
-                    java.util.Set<String> groups = perms.getGroupsForUser(uuidComponent.getUuid());
-                    isOp = groups != null && groups.contains("OP");
-                }
-            } catch (Exception ignored) {}
-
-            canGive = isCreative || isOp;
-        }
-        cmd.set("#RecipePanel #SelectedItemBar #ItemHeader #GiveButtonGroup.Visible", canGive);
-
-        // Update pin button text based on current pin state
+        // Update pin button text based on current pin status
         UUID playerUuid = playerRef.getUuid();
         boolean isPinned = JETPlugin.getInstance().getPinnedItemsStorage().isPinned(playerUuid, selectedItem);
         cmd.set("#RecipePanel #PinButton.Text", isPinned ? "Unpin" : "Pin");
@@ -1224,7 +1209,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
     private void buildItemStats(Item item, UICommandBuilder cmd, String language) {
         if (item == null) {
-            cmd.set("#RecipePanel #ItemStatsSection.Visible", false);
+            cmd.set("#RecipePanel #ItemStats.Visible", false);
             return;
         }
 
@@ -1269,24 +1254,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                     if (resistance != null && resistance instanceof java.util.Map) {
                         java.util.Map<?, ?> resMap = (java.util.Map<?, ?>) resistance;
                         for (java.util.Map.Entry<?, ?> entry : resMap.entrySet()) {
-                            try {
-                                // Cast key to DamageCause and get ID
-                                Class<?> damageCauseClass = Class.forName("com.hypixel.hytale.server.core.modules.entity.damage.DamageCause");
-                                Object damageCause = damageCauseClass.cast(entry.getKey());
-                                Method getIdMethod = damageCauseClass.getMethod("getId");
-                                String damageId = (String) getIdMethod.invoke(damageCause);
-
-                                // The value is an array of StaticModifier
-                                Object[] modifiers = (Object[]) entry.getValue();
-                                for (Object modifier : modifiers) {
-                                    stats.append("  ").append(damageId).append(" Resistance: +");
-                                    stats.append(formatStaticModifier(modifier));
-                                    stats.append("\n");
-                                }
-                            } catch (Exception e) {
-                                // Fallback: just show the raw value
-                                stats.append("  ").append(entry.getKey().toString()).append(": ").append(entry.getValue()).append("\n");
-                            }
+                            stats.append("  Resistance: ").append(entry.getKey()).append(" = ").append(entry.getValue()).append("\n");
                         }
                     }
                 } catch (Exception ignored) {}
@@ -1322,10 +1290,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         } catch (Exception ignored) {}
 
         if (hasStats) {
-            cmd.set("#RecipePanel #ItemStatsSection #ItemStats.TextSpans", Message.raw(stats.toString()));
-            cmd.set("#RecipePanel #ItemStatsSection.Visible", true);
+            cmd.set("#RecipePanel #ItemStats.TextSpans", Message.raw(stats.toString()));
+            cmd.set("#RecipePanel #ItemStats.Visible", true);
         } else {
-            cmd.set("#RecipePanel #ItemStatsSection.Visible", false);
+            cmd.set("#RecipePanel #ItemStats.Visible", false);
         }
     }
 
@@ -1404,8 +1372,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("SortMode", Codec.STRING), (d, v) -> d.sortMode = v, d -> d.sortMode)
                 .addField(new KeyedCodec<>("ModFilter", Codec.STRING), (d, v) -> d.modFilter = v, d -> d.modFilter)
                 .addField(new KeyedCodec<>("@GridLayout", Codec.STRING), (d, v) -> d.gridLayout = v, d -> d.gridLayout)
-                .addField(new KeyedCodec<>("@ShowHiddenItems", Codec.BOOLEAN), (d, v) -> d.showHiddenItems = v, d -> d.showHiddenItems)
-                .addField(new KeyedCodec<>("@ShowSalvagerRecipes", Codec.BOOLEAN), (d, v) -> d.showSalvagerRecipes = v, d -> d.showSalvagerRecipes)
+                .addField(new KeyedCodec<>("@ToggleShowHidden", Codec.STRING), (d, v) -> d.toggleShowHidden = v, d -> d.toggleShowHidden)
+                .addField(new KeyedCodec<>("@ToggleSalvager", Codec.STRING), (d, v) -> d.toggleSalvager = v, d -> d.toggleSalvager)
                 .addField(new KeyedCodec<>("GiveItem", Codec.STRING), (d, v) -> d.giveItem = v, d -> d.giveItem)
                 .addField(new KeyedCodec<>("GiveItemStack", Codec.STRING), (d, v) -> d.giveItemStack = v, d -> d.giveItemStack)
                 .build();
@@ -1422,32 +1390,11 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         private String sortMode;
         private String modFilter;
         private String gridLayout;
-        private Boolean showHiddenItems;
-        private Boolean showSalvagerRecipes;
+        private String toggleShowHidden;
+        private String toggleSalvager;
         private String giveItem;
         private String giveItemStack;
 
         public GuiData() {}
-    }
-
-    private String formatStaticModifier(Object modifier) {
-        try {
-            Class<?> staticModifierClass = Class.forName("com.hypixel.hytale.server.core.modules.entitystats.StaticModifier");
-            Method getCalculationTypeMethod = staticModifierClass.getMethod("getCalculationType");
-            Method getAmountMethod = staticModifierClass.getMethod("getAmount");
-
-            Object calculationType = getCalculationTypeMethod.invoke(modifier);
-            float amount = (Float) getAmountMethod.invoke(modifier);
-
-            String calculationTypeName = calculationType.toString();
-            if (calculationTypeName.equals("ADDITIVE")) {
-                return String.format("%.0f", amount);
-            } else if (calculationTypeName.equals("MULTIPLICATIVE")) {
-                return String.format("%.0f", amount * 100.0f) + "%";
-            }
-        } catch (Exception e) {
-            return modifier.toString();
-        }
-        return "";
     }
 }

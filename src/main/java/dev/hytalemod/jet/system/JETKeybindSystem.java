@@ -85,7 +85,7 @@ public class JETKeybindSystem extends EntityTickingSystem<EntityStore> {
                 if (currentPage == null) {
                     // Open JET browser
                     JETGui gui = new JETGui(playerRefComponent, CustomPageLifetime.CanDismiss, "");
-                    pageManager.openCustomPage(playerRef, store, gui);
+                    player.getPageManager().openCustomPage(playerRef, store, gui);
                 }
             }
 
