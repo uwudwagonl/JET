@@ -4,6 +4,8 @@ import com.hypixel.hytale.server.core.entity.LivingEntity;
 import com.hypixel.hytale.server.core.inventory.Inventory;
 import com.hypixel.hytale.server.core.inventory.container.ItemContainer;
 import com.hypixel.hytale.server.core.inventory.ItemStack;
+import com.hypixel.hytale.server.core.asset.type.item.config.Item;
+import com.hypixel.hytale.protocol.ItemResourceType;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -126,6 +128,78 @@ public class InventoryScanner {
             });
         } catch (Exception ignored) {
             // Silently fail if forEach isn't available
+        }
+    }
+
+    /**
+     * Counts items matching a resource type across all inventory sections.
+     *
+     * @param entity The living entity (player) to scan
+     * @param resourceTypeId The resource type ID to match (e.g., "hytale:meat")
+     * @return The total quantity of items with this resource type
+     */
+    public static int countResourceTypeInInventory(LivingEntity entity, String resourceTypeId) {
+        if (entity == null || resourceTypeId == null) {
+            return 0;
+        }
+
+        try {
+            Inventory inventory = entity.getInventory();
+            if (inventory == null) {
+                return 0;
+            }
+
+            int totalCount = 0;
+
+            // Scan all inventory sections
+            totalCount += countResourceTypeInContainer(inventory.getHotbar(), resourceTypeId);
+            totalCount += countResourceTypeInContainer(inventory.getStorage(), resourceTypeId);
+            totalCount += countResourceTypeInContainer(inventory.getBackpack(), resourceTypeId);
+            totalCount += countResourceTypeInContainer(inventory.getArmor(), resourceTypeId);
+            totalCount += countResourceTypeInContainer(inventory.getUtility(), resourceTypeId);
+            totalCount += countResourceTypeInContainer(inventory.getTools(), resourceTypeId);
+
+            return totalCount;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Counts items matching a resource type in a specific container.
+     *
+     * @param container The item container to scan
+     * @param resourceTypeId The resource type ID to match
+     * @return The quantity found in this container
+     */
+    private static int countResourceTypeInContainer(ItemContainer container, String resourceTypeId) {
+        if (container == null || resourceTypeId == null) {
+            return 0;
+        }
+
+        try {
+            return container.countItemStacks(itemStack -> {
+                if (itemStack == null) {
+                    return false;
+                }
+
+                Item item = itemStack.getItem();
+                if (item == null) {
+                    return false;
+                }
+
+                ItemResourceType[] resourceTypes = item.getResourceTypes();
+                if (resourceTypes != null) {
+                    for (ItemResourceType type : resourceTypes) {
+                        if (type.id != null && type.id.equals(resourceTypeId)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            });
+        } catch (Exception e) {
+            return 0;
         }
     }
 }

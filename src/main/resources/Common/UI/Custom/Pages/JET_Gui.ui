@@ -109,6 +109,16 @@ $C.@PageOverlay {
             Padding: (Right: 15);
           }
 
+          Label {
+            Text: "Grid:";
+            Style: (FontSize: 14, TextColor: #ffffff, VerticalAlignment: Center);
+            Padding: (Right: 5);
+          }
+
+          $C.@DropdownBox #GridLayout {
+            Anchor: (Width: 100, Height: 28);
+          }
+
           Group {
             FlexWeight: 1;
           }

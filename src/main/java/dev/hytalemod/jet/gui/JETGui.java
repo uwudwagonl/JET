@@ -11,9 +11,12 @@ import com.hypixel.hytale.protocol.packets.interface_.CustomUIEventBindingType;
 import com.hypixel.hytale.server.core.Message;
 import com.hypixel.hytale.server.core.asset.type.item.config.CraftingRecipe;
 import com.hypixel.hytale.server.core.asset.type.item.config.Item;
+import com.hypixel.hytale.server.core.asset.type.item.config.ResourceType;
 import com.hypixel.hytale.server.core.entity.entities.player.pages.InteractiveCustomUIPage;
 import com.hypixel.hytale.server.core.inventory.MaterialQuantity;
 import com.hypixel.hytale.server.core.modules.i18n.I18nModule;
+import com.hypixel.hytale.server.core.ui.Anchor;
+import com.hypixel.hytale.server.core.ui.Value;
 import com.hypixel.hytale.server.core.ui.builder.EventData;
 import com.hypixel.hytale.server.core.ui.builder.UICommandBuilder;
 import com.hypixel.hytale.server.core.ui.builder.UIEventBuilder;
@@ -103,6 +106,28 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 false
         );
 
+        // Populate grid layout dropdown
+        List<com.hypixel.hytale.server.core.ui.DropdownEntryInfo> gridLayouts = new ArrayList<>();
+        for (int cols = 5; cols <= 10; cols++) {
+            for (int rows = 5; rows <= 10; rows++) {
+                String value = cols + "x" + rows;
+                gridLayouts.add(new com.hypixel.hytale.server.core.ui.DropdownEntryInfo(
+                    com.hypixel.hytale.server.core.ui.LocalizableString.fromString(value),
+                    value
+                ));
+            }
+        }
+        cmd.set("#GridLayout.Entries", gridLayouts);
+        cmd.set("#GridLayout.Value", gridColumns + "x" + gridRows);
+
+        // Grid layout dropdown binding
+        events.addEventBinding(
+                CustomUIEventBindingType.ValueChanged,
+                "#GridLayout",
+                EventData.of("@GridLayout", "#GridLayout.Value"),
+                false
+        );
+
         // Toggle mode button - switches to craft mode
         events.addEventBinding(
                 CustomUIEventBindingType.Activating,
@@ -184,8 +209,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 } else {
                     activeFilters.add(category);
                 }
-                this.itemPage = 0; // Reset to first page on filter change
-                needsItemUpdate = true;
+                this.itemPage = 0;
+                if (selectedItem == null || selectedItem.isEmpty()) {
+                    needsItemUpdate = true;
+                }
             } catch (IllegalArgumentException e) {
                 // Invalid category, ignore
             }
@@ -196,9 +223,11 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             if (!activeFilters.isEmpty() || (modFilter != null && !modFilter.isEmpty())) {
                 activeFilters.clear();
                 modFilter = "";
-                sortMode = "category"; // Reset sort mode too
+                sortMode = "category";
                 this.itemPage = 0;
-                needsItemUpdate = true;
+                if (selectedItem == null || selectedItem.isEmpty()) {
+                    needsItemUpdate = true;
+                }
             }
         }
 
@@ -206,14 +235,18 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         if (data.sortMode != null && !data.sortMode.equals(this.sortMode)) {
             this.sortMode = data.sortMode;
             this.itemPage = 0;
-            needsItemUpdate = true;
+            if (selectedItem == null || selectedItem.isEmpty()) {
+                needsItemUpdate = true;
+            }
         }
 
         // Handle mod filter change
         if (data.modFilter != null && !data.modFilter.equals(this.modFilter)) {
             this.modFilter = data.modFilter;
             this.itemPage = 0;
-            needsItemUpdate = true;
+            if (selectedItem == null || selectedItem.isEmpty()) {
+                needsItemUpdate = true;
+            }
         }
 
         // Handle grid layout change
@@ -235,7 +268,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         if (data.showHiddenItems != null && data.showHiddenItems != this.showHiddenItems) {
             this.showHiddenItems = data.showHiddenItems;
             this.itemPage = 0;
-            needsItemUpdate = true;
+            if (selectedItem == null || selectedItem.isEmpty()) {
+                needsItemUpdate = true;
+            }
         }
 
         // Handle show salvager recipes checkbox
@@ -431,6 +466,24 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
             cmd.append("#ItemCards[" + row + "]", "Pages/JET_ItemIcon.ui");
             String sel = "#ItemCards[" + row + "][" + col + "]";
+
+            // Scale item card based on grid size - container is ~950px wide
+            int cardWidth = (950 / gridColumns) - 10;
+            int iconSize = Math.max(32, Math.min(64, cardWidth - 20));
+
+            // Set button anchor with dynamic width
+            com.hypixel.hytale.server.core.ui.Anchor buttonAnchor = new com.hypixel.hytale.server.core.ui.Anchor();
+            buttonAnchor.setWidth(com.hypixel.hytale.server.core.ui.Value.of(cardWidth));
+            buttonAnchor.setBottom(com.hypixel.hytale.server.core.ui.Value.of(10));
+            buttonAnchor.setRight(com.hypixel.hytale.server.core.ui.Value.of(10));
+            cmd.setObject(sel + " #ItemButton.Anchor", buttonAnchor);
+
+            // Set icon anchor with dynamic size
+            com.hypixel.hytale.server.core.ui.Anchor iconAnchor = new com.hypixel.hytale.server.core.ui.Anchor();
+            iconAnchor.setWidth(com.hypixel.hytale.server.core.ui.Value.of(iconSize));
+            iconAnchor.setHeight(com.hypixel.hytale.server.core.ui.Value.of(iconSize));
+            iconAnchor.setBottom(com.hypixel.hytale.server.core.ui.Value.of(5));
+            cmd.setObject(sel + " #ItemButton #ItemIcon.Anchor", iconAnchor);
 
             // Set quality background texture on the AssetImage wrapper
             try {
@@ -1067,28 +1120,62 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         for (int j = 0; j < inputs.size(); j++) {
             MaterialQuantity input = inputs.get(j);
             String itemId = input.getItemId();
+            String resourceTypeId = input.getResourceTypeId();
             int requiredQty = input.getQuantity();
 
-            cmd.appendInline(rSel + " #InputItems",
-                    "Group { LayoutMode: Top; Padding: (Right: 6); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
-            cmd.set(rSel + " #InputItems[" + j + "][0].ItemId", itemId);
+            if (itemId != null) {
+                // Handle specific item
+                cmd.appendInline(rSel + " #InputItems",
+                        "Group { LayoutMode: Top; Padding: (Right: 6); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
+                cmd.set(rSel + " #InputItems[" + j + "][0].ItemId", itemId);
 
-            // Count items in inventory
-            String labelText;
-            if (player != null) {
-                int inventoryCount = InventoryScanner.countItemInInventory(player, itemId);
+                // Count items in inventory
+                String labelText;
+                if (player != null) {
+                    int inventoryCount = InventoryScanner.countItemInInventory(player, itemId);
 
-                // Color code: green if enough, red if not enough
-                String color = inventoryCount >= requiredQty ? "#00ff00" : "#ff0000";
-                labelText = inventoryCount + "/" + requiredQty;
+                    // Color code: green if enough, red if not enough
+                    String color = inventoryCount >= requiredQty ? "#00ff00" : "#ff0000";
+                    labelText = inventoryCount + "/" + requiredQty;
 
-                // Update label with color
-                cmd.set(rSel + " #InputItems[" + j + "][1].Text", labelText);
-                cmd.set(rSel + " #InputItems[" + j + "][1].Style.TextColor", color);
-            } else {
-                // Fallback to old format if player not available
-                labelText = "x" + requiredQty;
-                cmd.set(rSel + " #InputItems[" + j + "][1].Text", labelText);
+                    // Update label with color
+                    cmd.set(rSel + " #InputItems[" + j + "][1].Text", labelText);
+                    cmd.set(rSel + " #InputItems[" + j + "][1].Style.TextColor", color);
+                } else {
+                    // Fallback to old format if player not available
+                    labelText = "x" + requiredQty;
+                    cmd.set(rSel + " #InputItems[" + j + "][1].Text", labelText);
+                }
+            } else if (resourceTypeId != null) {
+                // Handle resource type (e.g., "any meat", "any wood")
+                try {
+                    ResourceType resourceType = ResourceType.getAssetMap().getAsset(resourceTypeId);
+                    if (resourceType != null) {
+                        cmd.appendInline(rSel + " #InputItems",
+                                "Group { LayoutMode: Top; Padding: (Right: 6); AssetImage { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
+                        cmd.set(rSel + " #InputItems[" + j + "][0].AssetPath", resourceType.getIcon());
+
+                        // Count resource type items in inventory
+                        String labelText;
+                        if (player != null) {
+                            int inventoryCount = InventoryScanner.countResourceTypeInInventory(player, resourceTypeId);
+
+                            // Color code: green if enough, red if not enough
+                            String color = inventoryCount >= requiredQty ? "#00ff00" : "#ff0000";
+                            labelText = inventoryCount + "/" + requiredQty;
+
+                            // Update label with color
+                            cmd.set(rSel + " #InputItems[" + j + "][1].Text", labelText);
+                            cmd.set(rSel + " #InputItems[" + j + "][1].Style.TextColor", color);
+                        } else {
+                            // Fallback to old format if player not available
+                            labelText = "x" + requiredQty;
+                            cmd.set(rSel + " #InputItems[" + j + "][1].Text", labelText);
+                        }
+                    }
+                } catch (Exception e) {
+                    // Skip this resource type if there's an error
+                }
             }
         }
 
@@ -1349,11 +1436,11 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
         }
 
-        // Process inputs
+        // Process inputs - accept both items and resource types
         if (inputsObj != null) {
             if (inputsObj instanceof MaterialQuantity) {
                 MaterialQuantity input = (MaterialQuantity) inputsObj;
-                if (input != null && input.getItemId() != null) {
+                if (input != null && (input.getItemId() != null || input.getResourceTypeId() != null)) {
                     result.add(input);
                 }
             } else if (inputsObj instanceof List) {
@@ -1361,7 +1448,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 for (Object obj : inputs) {
                     if (obj instanceof MaterialQuantity) {
                         MaterialQuantity input = (MaterialQuantity) obj;
-                        if (input != null && input.getItemId() != null) {
+                        if (input != null && (input.getItemId() != null || input.getResourceTypeId() != null)) {
                             result.add(input);
                         }
                     }
@@ -1369,7 +1456,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             } else if (inputsObj instanceof MaterialQuantity[]) {
                 MaterialQuantity[] inputs = (MaterialQuantity[]) inputsObj;
                 for (MaterialQuantity input : inputs) {
-                    if (input != null && input.getItemId() != null) {
+                    if (input != null && (input.getItemId() != null || input.getResourceTypeId() != null)) {
                         result.add(input);
                     }
                 }
@@ -1378,7 +1465,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 for (Object obj : inputs) {
                     if (obj instanceof MaterialQuantity) {
                         MaterialQuantity input = (MaterialQuantity) obj;
-                        if (input != null && input.getItemId() != null) {
+                        if (input != null && (input.getItemId() != null || input.getResourceTypeId() != null)) {
                             result.add(input);
                         }
                     }
