@@ -17,9 +17,9 @@ dependencies {
     // Hytale Server API (provided by server at runtime)
     compileOnly(files("libs/hytale-server.jar"))
 
-    // Common dependencies (will be bundled in JAR)
-    implementation("com.google.code.gson:gson:2.10.1")
-    implementation("org.jetbrains:annotations:24.1.0")
+    // GSON is provided by Hytale at runtime
+    compileOnly("com.google.code.gson:gson:2.10.1")
+    compileOnly("org.jetbrains:annotations:24.1.0")
 
     // Test dependencies
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
@@ -59,12 +59,6 @@ tasks {
         archiveBaseName.set("JET")
         archiveVersion.set("1.0.0-beta.10")
         archiveClassifier.set("")
-        
-        // Relocate dependencies to avoid conflicts
-        relocate("com.google.gson", "dev.hytalemod.jet.libs.gson")
-        
-        // Minimize JAR size
-        minimize()
     }
     
     // Configure tests

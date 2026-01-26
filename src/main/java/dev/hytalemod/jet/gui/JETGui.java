@@ -71,9 +71,11 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         this.usagePage = 0;
         this.dropsPage = 0;
         this.itemPage = 0;
+
+        // Initialize with defaults
         this.activeFilters = new HashSet<>();
-        this.sortMode = "category"; // Default sort by category
-        this.modFilter = ""; // Empty means all mods
+        this.sortMode = "category";
+        this.modFilter = "";
         this.gridColumns = DEFAULT_ITEMS_PER_ROW;
         this.gridRows = DEFAULT_MAX_ROWS;
         this.showHiddenItems = false;
@@ -210,9 +212,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                     activeFilters.add(category);
                 }
                 this.itemPage = 0;
-                if (selectedItem == null || selectedItem.isEmpty()) {
-                    needsItemUpdate = true;
-                }
+                this.selectedItem = null;
+                needsItemUpdate = true;
+                needsRecipeUpdate = true;
             } catch (IllegalArgumentException e) {
                 // Invalid category, ignore
             }
@@ -225,9 +227,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 modFilter = "";
                 sortMode = "category";
                 this.itemPage = 0;
-                if (selectedItem == null || selectedItem.isEmpty()) {
-                    needsItemUpdate = true;
-                }
+                this.selectedItem = null;
+                needsItemUpdate = true;
+                needsRecipeUpdate = true;
             }
         }
 
@@ -235,18 +237,18 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         if (data.sortMode != null && !data.sortMode.equals(this.sortMode)) {
             this.sortMode = data.sortMode;
             this.itemPage = 0;
-            if (selectedItem == null || selectedItem.isEmpty()) {
-                needsItemUpdate = true;
-            }
+            this.selectedItem = null;
+            needsItemUpdate = true;
+            needsRecipeUpdate = true;
         }
 
         // Handle mod filter change
         if (data.modFilter != null && !data.modFilter.equals(this.modFilter)) {
             this.modFilter = data.modFilter;
             this.itemPage = 0;
-            if (selectedItem == null || selectedItem.isEmpty()) {
-                needsItemUpdate = true;
-            }
+            this.selectedItem = null;
+            needsItemUpdate = true;
+            needsRecipeUpdate = true;
         }
 
         // Handle grid layout change
@@ -268,9 +270,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         if (data.showHiddenItems != null && data.showHiddenItems != this.showHiddenItems) {
             this.showHiddenItems = data.showHiddenItems;
             this.itemPage = 0;
-            if (selectedItem == null || selectedItem.isEmpty()) {
-                needsItemUpdate = true;
-            }
+            this.selectedItem = null;
+            needsItemUpdate = true;
+            needsRecipeUpdate = true;
         }
 
         // Handle show salvager recipes checkbox
@@ -374,7 +376,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             UICommandBuilder cmd = new UICommandBuilder();
             UIEventBuilder events = new UIEventBuilder();
 
-            if (needsItemUpdate) {
+            // Only rebuild item list if not viewing a recipe (to prevent overlap)
+            if (needsItemUpdate && (selectedItem == null || selectedItem.isEmpty())) {
                 buildItemList(ref, cmd, events, store);
             }
             if (needsRecipeUpdate) {
@@ -959,7 +962,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             String dropType = getDropType(dropListId);
 
             // Set the title WITHOUT emoji icon
-            cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(displayName + " (" + dropType + ")"));
+            String fullDropTitle = displayName + " (" + dropType + ")";
+            cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(fullDropTitle));
 
             // Hide both input and output sections for now
             cmd.set(rSel + "[1].Visible", false);  // Hide Input group
@@ -1103,7 +1107,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             benchInfo = " [" + formatBenchName(bench.id) + " T" + bench.requiredTierLevel + "]";
         }
 
-        cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(recipeId + benchInfo));
+        String fullTitle = recipeId + benchInfo;
+        cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(fullTitle));
 
         // Get player for inventory scanning
         Player player = null;

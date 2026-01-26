@@ -56,11 +56,28 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         // Hide search bar - users can see all pinned items at once
         cmd.set("#SearchInput.Visible", false);
 
-        // Hide filter section buttons
-        cmd.set("#FilterSection.Visible", false);
+        // Checkbox bindings - needed even though we don't use them
+        events.addEventBinding(
+                CustomUIEventBindingType.ValueChanged,
+                "#ShowHiddenItems #CheckBox",
+                EventData.of("@ShowHiddenItems", "#ShowHiddenItems #CheckBox.Value"),
+                false
+        );
 
-        // Hide search hint text
-        cmd.set("#SearchHint.Visible", false);
+        events.addEventBinding(
+                CustomUIEventBindingType.ValueChanged,
+                "#ShowSalvager #CheckBox",
+                EventData.of("@ShowSalvagerRecipes", "#ShowSalvager #CheckBox.Value"),
+                false
+        );
+
+        // Grid layout dropdown binding - needed even though we don't use it
+        events.addEventBinding(
+                CustomUIEventBindingType.ValueChanged,
+                "#GridLayout",
+                EventData.of("@GridLayout", "#GridLayout.Value"),
+                false
+        );
 
         // Toggle mode button - switches to craft mode
         events.addEventBinding(
@@ -209,12 +226,12 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
             // Subtitle
             cmd.appendInline("#ItemCards[0]",
                 "Label { Style: (FontSize: 13, TextColor: #aaaaaa, HorizontalAlignment: Center); Padding: (Top: 10); }");
-            cmd.set("#ItemCards[0][2].Text", "Use /jet to browse items");
+            cmd.set("#ItemCards[0][2].Text", "Browse items with /jet and click the Pin button");
 
             // Hint
             cmd.appendInline("#ItemCards[0]",
-                "Label { Style: (FontSize: 13, TextColor: #aaaaaa, HorizontalAlignment: Center); Padding: (Top: 2); }");
-            cmd.set("#ItemCards[0][3].Text", "and pin your favorites!");
+                "Label { Style: (FontSize: 11, TextColor: #777777, HorizontalAlignment: Center); Padding: (Top: 8); }");
+            cmd.set("#ItemCards[0][3].Text", "to save your favorites here!");
 
             return;
         }
@@ -257,7 +274,7 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
             cmd.set(sel + " #ItemName.TextSpans", Message.raw(displayName));
             cmd.set(sel + ".TooltipTextSpans", buildTooltip(itemId, item, language));
 
-            events.addEventBinding(CustomUIEventBindingType.Activating, sel, EventData.of("SelectedItem", itemId), false);
+            events.addEventBinding(CustomUIEventBindingType.Activating, sel + " #ItemButton", EventData.of("SelectedItem", itemId), false);
 
             col++;
             if (col >= ITEMS_PER_ROW) {
@@ -373,13 +390,7 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
             benchInfo = " [" + formatBenchName(bench.id) + " T" + bench.requiredTierLevel + "]";
         }
 
-        // Truncate long recipe names for better formatting
-        String fullTitle = recipeId + benchInfo;
-        if (fullTitle.length() > 45) {
-            fullTitle = fullTitle.substring(0, 42) + "...";
-        }
-
-        cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(fullTitle));
+        cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(recipeId + benchInfo));
 
         // Get player for inventory scanning
         Player player = null;
@@ -560,6 +571,9 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
                 .addField(new KeyedCodec<>("PageChange", Codec.STRING), (d, v) -> d.pageChange = v, d -> d.pageChange)
                 .addField(new KeyedCodec<>("ToggleMode", Codec.STRING), (d, v) -> d.toggleMode = v, d -> d.toggleMode)
                 .addField(new KeyedCodec<>("PinAction", Codec.STRING), (d, v) -> d.pinAction = v, d -> d.pinAction)
+                .addField(new KeyedCodec<>("@ShowHiddenItems", Codec.BOOLEAN), (d, v) -> d.showHiddenItems = v, d -> d.showHiddenItems)
+                .addField(new KeyedCodec<>("@ShowSalvagerRecipes", Codec.BOOLEAN), (d, v) -> d.showSalvagerRecipes = v, d -> d.showSalvagerRecipes)
+                .addField(new KeyedCodec<>("@GridLayout", Codec.STRING), (d, v) -> d.gridLayout = v, d -> d.gridLayout)
                 .build();
 
         private String selectedItem;
@@ -567,6 +581,9 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         private String pageChange;
         private String toggleMode;
         private String pinAction;
+        private boolean showHiddenItems;
+        private boolean showSalvagerRecipes;
+        private String gridLayout;
 
         public GuiData() {}
     }
