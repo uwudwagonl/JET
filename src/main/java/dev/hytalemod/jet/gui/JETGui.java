@@ -28,6 +28,7 @@ import com.hypixel.hytale.server.core.asset.AssetModule;
 import com.hypixel.hytale.protocol.Color;
 import dev.hytalemod.jet.JETPlugin;
 import dev.hytalemod.jet.model.ItemCategory;
+import dev.hytalemod.jet.storage.BrowserState;
 import dev.hytalemod.jet.util.CategoryUtil;
 import dev.hytalemod.jet.util.InventoryScanner;
 import dev.hytalemod.jet.util.SearchParser;
@@ -62,24 +63,55 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     private boolean showHiddenItems; // Show items with hidden quality
     private boolean showSalvagerRecipes; // Show salvager recipes
 
-    public JETGui(PlayerRef playerRef, CustomPageLifetime lifetime, String initialSearch) {
+    public JETGui(PlayerRef playerRef, CustomPageLifetime lifetime, String initialSearch, BrowserState saved) {
         super(playerRef, lifetime, GuiData.CODEC);
-        this.searchQuery = initialSearch != null ? initialSearch : "";
-        this.selectedItem = null;
-        this.activeSection = "craft";
-        this.craftPage = 0;
-        this.usagePage = 0;
-        this.dropsPage = 0;
-        this.itemPage = 0;
-
-        // Initialize with defaults
         this.activeFilters = new HashSet<>();
-        this.sortMode = "category";
-        this.modFilter = "";
-        this.gridColumns = DEFAULT_ITEMS_PER_ROW;
-        this.gridRows = DEFAULT_MAX_ROWS;
-        this.showHiddenItems = false;
-        this.showSalvagerRecipes = true;
+
+        if (saved != null) {
+            applySavedState(saved);
+        } else {
+            this.searchQuery = initialSearch != null ? initialSearch : "";
+            this.selectedItem = null;
+            this.activeSection = "craft";
+            this.craftPage = 0;
+            this.usagePage = 0;
+            this.dropsPage = 0;
+            this.itemPage = 0;
+            this.sortMode = "category";
+            this.modFilter = "";
+            this.gridColumns = DEFAULT_ITEMS_PER_ROW;
+            this.gridRows = DEFAULT_MAX_ROWS;
+            this.showHiddenItems = false;
+            this.showSalvagerRecipes = true;
+        }
+    }
+
+    private void applySavedState(BrowserState s) {
+        this.searchQuery = s.searchQuery != null ? s.searchQuery : "";
+        this.selectedItem = s.selectedItem;
+        if (this.selectedItem != null && !JETPlugin.ITEMS.containsKey(this.selectedItem)) {
+            this.selectedItem = null;
+        }
+        this.activeSection = s.activeSection != null && (s.activeSection.equals("craft") || s.activeSection.equals("usage") || s.activeSection.equals("drops"))
+            ? s.activeSection : "craft";
+        this.craftPage = Math.max(0, s.craftPage);
+        this.usagePage = Math.max(0, s.usagePage);
+        this.dropsPage = Math.max(0, s.dropsPage);
+        this.itemPage = Math.max(0, s.itemPage);
+        this.sortMode = s.sortMode != null ? s.sortMode : "category";
+        this.modFilter = s.modFilter != null ? s.modFilter : "";
+        this.gridColumns = Math.max(MIN_GRID_SIZE, Math.min(MAX_GRID_SIZE, s.gridColumns > 0 ? s.gridColumns : DEFAULT_ITEMS_PER_ROW));
+        this.gridRows = Math.max(MIN_GRID_SIZE, Math.min(MAX_GRID_SIZE, s.gridRows > 0 ? s.gridRows : DEFAULT_MAX_ROWS));
+        this.showHiddenItems = s.showHiddenItems;
+        this.showSalvagerRecipes = s.showSalvagerRecipes;
+        this.activeFilters.clear();
+        if (s.activeFilters != null) {
+            for (String name : s.activeFilters) {
+                try {
+                    this.activeFilters.add(ItemCategory.valueOf(name));
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
     }
 
     @Override
@@ -121,6 +153,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
         cmd.set("#GridLayout.Entries", gridLayouts);
         cmd.set("#GridLayout.Value", gridColumns + "x" + gridRows);
+        cmd.set("#SearchInput.Value", searchQuery != null ? searchQuery : "");
 
         // Grid layout dropdown binding
         events.addEventBinding(
@@ -386,6 +419,34 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
             sendUpdate(cmd, events, false);
         }
+
+        maybeSaveState();
+    }
+
+    private BrowserState captureState() {
+        BrowserState s = new BrowserState();
+        s.searchQuery = searchQuery != null ? searchQuery : "";
+        s.selectedItem = selectedItem;
+        s.activeSection = activeSection != null ? activeSection : "craft";
+        s.craftPage = craftPage;
+        s.usagePage = usagePage;
+        s.dropsPage = dropsPage;
+        s.itemPage = itemPage;
+        s.sortMode = sortMode != null ? sortMode : "category";
+        s.modFilter = modFilter != null ? modFilter : "";
+        s.gridColumns = gridColumns;
+        s.gridRows = gridRows;
+        s.showHiddenItems = showHiddenItems;
+        s.showSalvagerRecipes = showSalvagerRecipes;
+        s.activeFilters = new ArrayList<>();
+        for (ItemCategory c : activeFilters) {
+            s.activeFilters.add(c.name());
+        }
+        return s;
+    }
+
+    private void maybeSaveState() {
+        JETPlugin.getInstance().getBrowserStateStorage().saveState(playerRef.getUuid(), captureState());
     }
 
     private void buildItemList(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {

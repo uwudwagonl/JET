@@ -16,8 +16,8 @@ import dev.hytalemod.jet.command.JETPinnedCommand;
 import dev.hytalemod.jet.registry.DropListRegistry;
 import dev.hytalemod.jet.registry.ItemRegistry;
 import dev.hytalemod.jet.registry.RecipeRegistry;
+import dev.hytalemod.jet.storage.BrowserStateStorage;
 import dev.hytalemod.jet.storage.PinnedItemsStorage;
-import dev.hytalemod.jet.system.JETKeybindSystem;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -35,7 +35,7 @@ public class JETPlugin extends JavaPlugin {
     private RecipeRegistry recipeRegistry;
     private DropListRegistry dropListRegistry;
     private PinnedItemsStorage pinnedItemsStorage;
-    private JETKeybindSystem keybindSystem;
+    private BrowserStateStorage browserStateStorage;
 
     public static Map<String, Item> ITEMS = new HashMap<>();
     public static Map<String, CraftingRecipe> RECIPES = new HashMap<>();
@@ -57,10 +57,9 @@ public class JETPlugin extends JavaPlugin {
         dropListRegistry = new DropListRegistry();
         pinnedItemsStorage = new PinnedItemsStorage();
         pinnedItemsStorage.load();
+        browserStateStorage = new BrowserStateStorage();
+        browserStateStorage.load();
 
-        // Keybind system temporarily disabled due to issues
-        // keybindSystem = new JETKeybindSystem();
-        // getEntityStoreRegistry().registerSystem(keybindSystem);
         getCommandRegistry().registerCommand(new JETCommand());
         getCommandRegistry().registerCommand(new JETDropsCommand());
         getCommandRegistry().registerCommand(new JETInfoCommand());
@@ -72,7 +71,6 @@ public class JETPlugin extends JavaPlugin {
 
         getLogger().at(Level.INFO).log("[JET] Plugin enabled - v" + VERSION);
         getLogger().at(Level.INFO).log("[JET] Use /jet or /j to open item browser, /pinned or /p for pinned items");
-        // getLogger().at(Level.INFO).log("[JET] Keybind: Alt = Item Browser");
     }
 
     @SuppressWarnings("unchecked")
@@ -184,8 +182,8 @@ public class JETPlugin extends JavaPlugin {
         return pinnedItemsStorage;
     }
 
-    public JETKeybindSystem getKeybindSystem() {
-        return keybindSystem;
+    public BrowserStateStorage getBrowserStateStorage() {
+        return browserStateStorage;
     }
 
     public DropListRegistry getDropListRegistry() {

@@ -11,7 +11,9 @@ import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import dev.hytalemod.jet.JETPlugin;
 import dev.hytalemod.jet.gui.JETGui;
+import dev.hytalemod.jet.storage.BrowserState;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.CompletableFuture;
@@ -49,7 +51,8 @@ public class JETCommand extends AbstractCommand {
             PlayerRef playerRef = (PlayerRef) store.getComponent(ref, PlayerRef.getComponentType());
 
             if (playerRef != null) {
-                JETGui gui = new JETGui(playerRef, CustomPageLifetime.CanDismiss, "");
+                BrowserState saved = JETPlugin.getInstance().getBrowserStateStorage().getState(playerRef.getUuid());
+                JETGui gui = new JETGui(playerRef, CustomPageLifetime.CanDismiss, "", saved);
                 player.getPageManager().openCustomPage(ref, store, gui);
             }
         }, world);
