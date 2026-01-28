@@ -93,7 +93,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.selectedItem = null;
         }
         this.activeSection = s.activeSection != null && (s.activeSection.equals("craft") || s.activeSection.equals("usage") || s.activeSection.equals("drops"))
-            ? s.activeSection : "craft";
+                ? s.activeSection : "craft";
         this.craftPage = Math.max(0, s.craftPage);
         this.usagePage = Math.max(0, s.usagePage);
         this.dropsPage = Math.max(0, s.dropsPage);
@@ -146,8 +146,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             for (int rows = 5; rows <= 10; rows++) {
                 String value = cols + "x" + rows;
                 gridLayouts.add(new com.hypixel.hytale.server.core.ui.DropdownEntryInfo(
-                    com.hypixel.hytale.server.core.ui.LocalizableString.fromString(value),
-                    value
+                        com.hypixel.hytale.server.core.ui.LocalizableString.fromString(value),
+                        value
                 ));
             }
         }
@@ -806,10 +806,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             boolean isOp = false;
             try {
                 com.hypixel.hytale.server.core.entity.UUIDComponent uuidComponent =
-                    store.getComponent(ref, com.hypixel.hytale.server.core.entity.UUIDComponent.getComponentType());
+                        store.getComponent(ref, com.hypixel.hytale.server.core.entity.UUIDComponent.getComponentType());
                 if (uuidComponent != null) {
                     com.hypixel.hytale.server.core.permissions.PermissionsModule perms =
-                        com.hypixel.hytale.server.core.permissions.PermissionsModule.get();
+                            com.hypixel.hytale.server.core.permissions.PermissionsModule.get();
                     java.util.Set<String> groups = perms.getGroupsForUser(uuidComponent.getUuid());
                     isOp = groups != null && groups.contains("OP");
                 }
@@ -825,7 +825,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
 
             com.hypixel.hytale.server.core.inventory.ItemStack stack =
-                new com.hypixel.hytale.server.core.inventory.ItemStack(itemId);
+                    new com.hypixel.hytale.server.core.inventory.ItemStack(itemId);
 
             if (maxStack) {
                 stack = stack.withQuantity(item.getMaxStack());
@@ -874,10 +874,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             boolean isOp = false;
             try {
                 com.hypixel.hytale.server.core.entity.UUIDComponent uuidComponent =
-                    store.getComponent(ref, com.hypixel.hytale.server.core.entity.UUIDComponent.getComponentType());
+                        store.getComponent(ref, com.hypixel.hytale.server.core.entity.UUIDComponent.getComponentType());
                 if (uuidComponent != null) {
                     com.hypixel.hytale.server.core.permissions.PermissionsModule perms =
-                        com.hypixel.hytale.server.core.permissions.PermissionsModule.get();
+                            com.hypixel.hytale.server.core.permissions.PermissionsModule.get();
                     java.util.Set<String> groups = perms.getGroupsForUser(uuidComponent.getUuid());
                     isOp = groups != null && groups.contains("OP");
                 }
@@ -890,7 +890,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         // Update pin button text based on current pin state
         UUID playerUuid = playerRef.getUuid();
         boolean isPinned = JETPlugin.getInstance().getPinnedItemsStorage().isPinned(playerUuid, selectedItem);
-        cmd.set("#RecipePanel #PinButton.Text", isPinned ? "Unpin" : "Pin");
+        cmd.set("#RecipePanel #PinButton.Text", isPinned ? "[-]" : "[+]");
+
 
         // Add event bindings for give item buttons
         events.addEventBinding(CustomUIEventBindingType.Activating, "#RecipePanel #GiveItemButton",
@@ -1117,7 +1118,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
         // Remove the common suffix
         String cleaned = dropListId.replace("_Gathering_Breaking_DropList", "")
-                                   .replace("_Gathering_Soft_DropList", "");
+                .replace("_Gathering_Soft_DropList", "");
 
         // Split by underscore
         String[] parts = cleaned.split("_");

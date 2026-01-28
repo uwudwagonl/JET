@@ -215,22 +215,22 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
 
             // Star icon placeholder (using text)
             cmd.appendInline("#ItemCards[0]",
-                "Label { Style: (FontSize: 48, TextColor: #ffaa00, HorizontalAlignment: Center); Padding: (Top: 60); }");
+                    "Label { Style: (FontSize: 48, TextColor: #ffaa00, HorizontalAlignment: Center); Padding: (Top: 60); }");
             cmd.set("#ItemCards[0][0].Text", "★");
 
             // Main message
             cmd.appendInline("#ItemCards[0]",
-                "Label { Style: (FontSize: 18, TextColor: #ffffff, HorizontalAlignment: Center, RenderBold: true); Padding: (Top: 20); }");
+                    "Label { Style: (FontSize: 18, TextColor: #ffffff, HorizontalAlignment: Center, RenderBold: true); Padding: (Top: 20); }");
             cmd.set("#ItemCards[0][1].Text", "No Pinned Items Yet");
 
             // Subtitle
             cmd.appendInline("#ItemCards[0]",
-                "Label { Style: (FontSize: 13, TextColor: #aaaaaa, HorizontalAlignment: Center); Padding: (Top: 10); }");
+                    "Label { Style: (FontSize: 13, TextColor: #aaaaaa, HorizontalAlignment: Center); Padding: (Top: 10); }");
             cmd.set("#ItemCards[0][2].Text", "Browse items with /jet and click the Pin button");
 
             // Hint
             cmd.appendInline("#ItemCards[0]",
-                "Label { Style: (FontSize: 11, TextColor: #777777, HorizontalAlignment: Center); Padding: (Top: 8); }");
+                    "Label { Style: (FontSize: 11, TextColor: #777777, HorizontalAlignment: Center); Padding: (Top: 8); }");
             cmd.set("#ItemCards[0][3].Text", "to save your favorites here!");
 
             return;
@@ -311,7 +311,7 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         // Update pin button text based on current pin status
         UUID playerUuid = playerRef.getUuid();
         boolean isPinned = JETPlugin.getInstance().getPinnedItemsStorage().isPinned(playerUuid, selectedItem);
-        cmd.set("#RecipePanel #PinButton.Text", isPinned ? "Unpin" : "Pin");
+        cmd.set("#RecipePanel #PinButton.Text", isPinned ? "[-]" : "[+]");
 
         if ("craft".equals(activeSection)) {
             buildCraftSection(ref, cmd, events, craftRecipeIds);
