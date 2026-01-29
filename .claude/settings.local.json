@@ -31,7 +31,12 @@
       "Bash(dir:*)",
       "Bash(where:*)",
       "Bash(powershell:*)",
-      "Bash(Select-Object -Last 50)"
+      "Bash(Select-Object -Last 50)",
+      "Bash(jar tf:*)",
+      "WebFetch(domain:www.curseforge.com)",
+      "Bash(findstr:*)",
+      "Bash(cmd /c \"where jd-cli 2>nul || echo Not found\")",
+      "Bash(cmd /c \"dir /s /b C:\\\\Users\\\\benja\\\\Downloads\\\\biv_check\\\\*.class 2>nul | findstr BetterItemViewer\")"
     ]
   }
 }

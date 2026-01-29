@@ -53,31 +53,24 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Gui.ui");
 
-        // Hide search bar - users can see all pinned items at once
+        // Hide search bar, filters, sorting controls, and other UI elements
         cmd.set("#SearchInput.Visible", false);
+        cmd.set("#ShowHiddenItems.Visible", false);
+        cmd.set("#ShowSalvager.Visible", false);
+        cmd.set("#GridLayout.Visible", false);
+        cmd.set("#PrevItemPage.Visible", false);
+        cmd.set("#NextItemPage.Visible", false);
+        cmd.set("#ItemPageInfo.Visible", false);
+        cmd.set("#ClearFilters.Visible", false);
 
-        // Checkbox bindings - needed even though we don't use them
-        events.addEventBinding(
-                CustomUIEventBindingType.ValueChanged,
-                "#ShowHiddenItems #CheckBox",
-                EventData.of("@ShowHiddenItems", "#ShowHiddenItems #CheckBox.Value"),
-                false
-        );
-
-        events.addEventBinding(
-                CustomUIEventBindingType.ValueChanged,
-                "#ShowSalvager #CheckBox",
-                EventData.of("@ShowSalvagerRecipes", "#ShowSalvager #CheckBox.Value"),
-                false
-        );
-
-        // Grid layout dropdown binding - needed even though we don't use it
-        events.addEventBinding(
-                CustomUIEventBindingType.ValueChanged,
-                "#GridLayout",
-                EventData.of("@GridLayout", "#GridLayout.Value"),
-                false
-        );
+        // Hide all filter buttons
+        cmd.set("#FilterTool.Visible", false);
+        cmd.set("#FilterWeapon.Visible", false);
+        cmd.set("#FilterArmor.Visible", false);
+        cmd.set("#FilterConsumable.Visible", false);
+        cmd.set("#FilterBlock.Visible", false);
+        cmd.set("#FilterCraftable.Visible", false);
+        cmd.set("#FilterNonCraftable.Visible", false);
 
         // Toggle mode button - switches to craft mode
         events.addEventBinding(
@@ -571,9 +564,6 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
                 .addField(new KeyedCodec<>("PageChange", Codec.STRING), (d, v) -> d.pageChange = v, d -> d.pageChange)
                 .addField(new KeyedCodec<>("ToggleMode", Codec.STRING), (d, v) -> d.toggleMode = v, d -> d.toggleMode)
                 .addField(new KeyedCodec<>("PinAction", Codec.STRING), (d, v) -> d.pinAction = v, d -> d.pinAction)
-                .addField(new KeyedCodec<>("@ShowHiddenItems", Codec.BOOLEAN), (d, v) -> d.showHiddenItems = v, d -> d.showHiddenItems)
-                .addField(new KeyedCodec<>("@ShowSalvagerRecipes", Codec.BOOLEAN), (d, v) -> d.showSalvagerRecipes = v, d -> d.showSalvagerRecipes)
-                .addField(new KeyedCodec<>("@GridLayout", Codec.STRING), (d, v) -> d.gridLayout = v, d -> d.gridLayout)
                 .build();
 
         private String selectedItem;
@@ -581,9 +571,6 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         private String pageChange;
         private String toggleMode;
         private String pinAction;
-        private boolean showHiddenItems;
-        private boolean showSalvagerRecipes;
-        private String gridLayout;
 
         public GuiData() {}
     }

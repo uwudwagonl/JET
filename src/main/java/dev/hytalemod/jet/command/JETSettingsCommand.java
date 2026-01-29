@@ -3,7 +3,7 @@ package dev.hytalemod.jet.command;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.protocol.GameMode;
-import com.hypixel.hytale.protocol.packets.interface_.CustomPageLifetime;
+import com.hypixel.hytale.server.core.Message;
 import com.hypixel.hytale.server.core.command.system.AbstractCommand;
 import com.hypixel.hytale.server.core.command.system.CommandContext;
 import com.hypixel.hytale.server.core.command.system.CommandSender;
@@ -12,23 +12,23 @@ import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import dev.hytalemod.jet.JETPlugin;
-import dev.hytalemod.jet.gui.JETGui;
-import dev.hytalemod.jet.storage.BrowserState;
+import dev.hytalemod.jet.gui.JETSettingsGui;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
 
 /**
- * /jet - Opens the item browser
+ * Command to open JET settings GUI
  */
-public class JETCommand extends AbstractCommand {
+public class JETSettingsCommand extends AbstractCommand {
 
-    public JETCommand() {
-        super("jet", "Opens the JET item browser", false);
-        addAliases("jei", "items", "j");
+    public JETSettingsCommand() {
+        super("jetsettings", "Open JET settings", false);
+        addAliases("jsettings");
         setPermissionGroup(GameMode.Adventure);
     }
-    
+
     @Override
     protected CompletableFuture<Void> execute(@Nonnull CommandContext context) {
         CommandSender sender = context.sender();
@@ -48,12 +48,18 @@ public class JETCommand extends AbstractCommand {
         World world = ((EntityStore) store.getExternalData()).getWorld();
 
         return CompletableFuture.runAsync(() -> {
-            PlayerRef playerRef = (PlayerRef) store.getComponent(ref, PlayerRef.getComponentType());
+            PlayerRef playerRef = store.getComponent(ref, PlayerRef.getComponentType());
 
-            if (playerRef != null) {
-                BrowserState saved = JETPlugin.getInstance().getBrowserStateStorage().getState(playerRef.getUuid());
-                JETGui gui = new JETGui(playerRef, CustomPageLifetime.CanDismiss, "", saved);
+            if (playerRef == null) {
+                return;
+            }
+
+            try {
+                JETSettingsGui gui = new JETSettingsGui(playerRef, JETPlugin.getInstance());
                 player.getPageManager().openCustomPage(ref, store, gui);
+            } catch (Exception e) {
+                playerRef.sendMessage(Message.raw("§c[JET] Failed to open settings: " + e.getMessage()));
+                JETPlugin.getInstance().getLogger().at(Level.WARNING).log("[JET] Failed to open settings GUI: " + e.getMessage());
             }
         }, world);
     }
