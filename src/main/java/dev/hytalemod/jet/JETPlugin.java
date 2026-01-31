@@ -5,14 +5,18 @@ import com.hypixel.hytale.assetstore.map.DefaultAssetMap;
 import com.hypixel.hytale.server.core.asset.type.item.config.CraftingRecipe;
 import com.hypixel.hytale.server.core.asset.type.item.config.Item;
 import com.hypixel.hytale.server.core.asset.type.item.config.ItemDropList;
+import com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent;
 import com.hypixel.hytale.server.core.inventory.MaterialQuantity;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
+import com.hypixel.hytale.server.core.universe.PlayerRef;
 import dev.hytalemod.jet.command.JETCommand;
 import dev.hytalemod.jet.command.JETDropsCommand;
 import dev.hytalemod.jet.command.JETInfoCommand;
 import dev.hytalemod.jet.command.JETListCommand;
 import dev.hytalemod.jet.command.JETPinnedCommand;
+import dev.hytalemod.jet.command.JETPinRecipeCommand;
+import dev.hytalemod.jet.hud.RecipeOverlayManager;
 import dev.hytalemod.jet.registry.DropListRegistry;
 import dev.hytalemod.jet.registry.ItemRegistry;
 import dev.hytalemod.jet.registry.RecipeRegistry;
@@ -65,10 +69,16 @@ public class JETPlugin extends JavaPlugin {
         getCommandRegistry().registerCommand(new JETInfoCommand());
         getCommandRegistry().registerCommand(new JETListCommand());
         getCommandRegistry().registerCommand(new JETPinnedCommand());
+        getCommandRegistry().registerCommand(new JETPinRecipeCommand());
         getEventRegistry().register(LoadedAssetsEvent.class, Item.class, JETPlugin::onItemsLoaded);
         getEventRegistry().register(LoadedAssetsEvent.class, CraftingRecipe.class, JETPlugin::onRecipesLoaded);
         getEventRegistry().register(LoadedAssetsEvent.class, ItemDropList.class, JETPlugin::onDropListsLoaded);
-
+        getEventRegistry().register(PlayerDisconnectEvent.class, event -> {
+            PlayerRef playerRef = event.getPlayerRef();
+            if (playerRef != null && playerRef.getUuid() != null) {
+                RecipeOverlayManager.getInstance().onPlayerDisconnect(playerRef.getUuid());
+            }
+        });
         getLogger().at(Level.INFO).log("[JET] Plugin enabled - v" + VERSION);
         getLogger().at(Level.INFO).log("[JET] Use /jet or /j to open item browser, /pinned or /p for pinned items");
     }

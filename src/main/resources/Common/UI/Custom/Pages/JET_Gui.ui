@@ -247,13 +247,14 @@ $C.@PageOverlay {
               Anchor: (Width: 70, Height: 30);
               Text: "[+]";
               Style: TextButtonStyle (
-                Default: (LabelStyle: (TextColor: #888888, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
-                Hovered: (LabelStyle: (TextColor: #ffd700), Background: #3a3a3a(0.8)),
-                Pressed: (Background: #3a3a3a(0.9)),
+                Default: (LabelStyle: (FontSize: 24, TextColor: #888888, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+                Hovered: (LabelStyle: (FontSize: 24, TextColor: #ffd700, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.8)),
+                Pressed: (LabelStyle: (FontSize: 24i, TextColor: #fa003f, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.9)),
                 Sounds: $C.@ButtonSounds
               );
               Background: #2a2a2a(0.6);
             }
+
           }
 
           Group #ItemStatsSection {
