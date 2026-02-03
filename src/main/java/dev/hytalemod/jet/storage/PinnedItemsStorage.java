@@ -9,7 +9,6 @@ import java.io.*;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -30,19 +29,7 @@ public class PinnedItemsStorage {
      * Get the data directory for JET plugin storage
      */
     private static Path getDataDirectory() {
-        String os = System.getProperty("os.name").toLowerCase();
-        String userHome = System.getProperty("user.home");
-
-        if (os.contains("win")) {
-            // Windows: %APPDATA%\Roaming\Hytale\UserData\JET
-            return Paths.get(userHome, "AppData", "Roaming", "Hytale", "UserData", "JET");
-        } else if (os.contains("mac")) {
-            // macOS: ~/Library/Application Support/Hytale/UserData/JET
-            return Paths.get(userHome, "Library", "Application Support", "Hytale", "UserData", "JET");
-        } else {
-            // Linux: ~/.local/share/Hytale/UserData/JET
-            return Paths.get(userHome, ".local", "share", "Hytale", "UserData", "JET");
-        }
+        return JETPlugin.getJetDataDirectory();
     }
 
     /**
@@ -54,7 +41,7 @@ public class PinnedItemsStorage {
             Path storageFile = dataDir.resolve(STORAGE_FILE);
 
             if (!Files.exists(storageFile)) {
-                JETPlugin.getInstance().getLogger().at(Level.INFO).log("[JET] No existing pinned items file found, starting fresh");
+                JETPlugin.getInstance().log(Level.INFO,"[JET] No existing pinned items file found, starting fresh");
                 return;
             }
 
@@ -71,13 +58,13 @@ public class PinnedItemsStorage {
                         UUID playerUuid = UUID.fromString(entry.getKey());
                         pinnedItems.put(playerUuid, new HashSet<>(entry.getValue()));
                     } catch (IllegalArgumentException e) {
-                        JETPlugin.getInstance().getLogger().at(Level.WARNING).log("[JET] Invalid UUID in pinned items: " + entry.getKey());
+                        JETPlugin.getInstance().log(Level.WARNING,"[JET] Invalid UUID in pinned items: " + entry.getKey());
                     }
                 }
-                JETPlugin.getInstance().getLogger().at(Level.INFO).log("[JET] Loaded pinned items for " + pinnedItems.size() + " players");
+                JETPlugin.getInstance().log(Level.INFO,"[JET] Loaded pinned items for " + pinnedItems.size() + " players");
             }
         } catch (Exception e) {
-            JETPlugin.getInstance().getLogger().at(Level.SEVERE).log("[JET] Failed to load pinned items: " + e.getMessage());
+            JETPlugin.getInstance().log(Level.SEVERE,"[JET] Failed to load pinned items: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -101,9 +88,9 @@ public class PinnedItemsStorage {
             GSON.toJson(saveData, writer);
             writer.close();
 
-            JETPlugin.getInstance().getLogger().at(Level.INFO).log("[JET] Saved pinned items for " + pinnedItems.size() + " players");
+            JETPlugin.getInstance().log(Level.INFO,"[JET] Saved pinned items for " + pinnedItems.size() + " players");
         } catch (Exception e) {
-            JETPlugin.getInstance().getLogger().at(Level.SEVERE).log("[JET] Failed to save pinned items: " + e.getMessage());
+            JETPlugin.getInstance().log(Level.SEVERE,"[JET] Failed to save pinned items: " + e.getMessage());
             e.printStackTrace();
         }
     }

@@ -179,6 +179,55 @@ $C.@PageOverlay {
             Visible: false;
           }
         }
+
+        Group #HistoryBar {
+          LayoutMode: Top;
+          Padding: (Top: 5);
+          Anchor: (Height: 55);
+
+          Group #HistoryHeader {
+            LayoutMode: Left;
+            Anchor: (Height: 18);
+            Padding: (Left: 5);
+
+            TextButton #ToggleHistory {
+              Anchor: (Width: 18, Height: 18);
+              Text: "v";
+              Style: TextButtonStyle(
+                Default: (LabelStyle: (FontSize: 11, TextColor: #888888)),
+                Hovered: (LabelStyle: (TextColor: #ffffff)),
+                Sounds: $C.@ButtonSounds
+              );
+            }
+
+            Label #HistoryLabel {
+              Text: "History";
+              Style: (FontSize: 11, TextColor: #888888, VerticalAlignment: Center);
+              Padding: (Left: 2);
+            }
+
+            TextButton #ClearHistory {
+              Anchor: (Width: 40, Height: 18, Left: 8);
+              Text: "Clear";
+              Style: TextButtonStyle(
+                Default: (LabelStyle: (FontSize: 9, TextColor: #666666)),
+                Hovered: (LabelStyle: (TextColor: #ff6666)),
+                Sounds: $C.@ButtonSounds
+              );
+            }
+          }
+
+          Group #HistoryContent {
+            LayoutMode: Left;
+            Padding: (Top: 3, Left: 5, Right: 5);
+            Background: (Color: #1a1a1a(0.4));
+            Anchor: (Height: 34);
+
+            Group #HistoryItems {
+              LayoutMode: Left;
+            }
+          }
+        }
       }
 
       Group #RecipePanel {

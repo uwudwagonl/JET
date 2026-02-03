@@ -50,11 +50,26 @@ public class CategoryUtil {
             categories.add(ItemCategory.CONSUMABLE);
         }
 
-        // Detect blocks
-        if (itemId.contains("block") || itemId.contains("brick") || itemId.contains("stone") ||
-            itemId.contains("wood") || itemId.contains("plank") || itemId.contains("tile") ||
-            itemId.contains("ore") || itemId.contains("log") || itemId.contains("dirt") ||
-            itemId.contains("sand") || itemId.contains("gravel") || itemId.contains("clay")) {
+        // Detect blocks - check for Block_ prefix or getBlock() returning non-null
+        boolean isBlock = false;
+
+        // Check for Block_ prefix in item ID (common convention)
+        if (item.getId().startsWith("Block_")) {
+            isBlock = true;
+        }
+
+        // Try to check if item has a block via reflection
+        if (!isBlock) {
+            try {
+                java.lang.reflect.Method getBlockMethod = Item.class.getMethod("getBlock");
+                Object block = getBlockMethod.invoke(item);
+                if (block != null) {
+                    isBlock = true;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (isBlock) {
             categories.add(ItemCategory.BLOCK);
         }
 

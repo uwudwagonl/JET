@@ -28,6 +28,7 @@ import com.hypixel.hytale.server.core.asset.AssetModule;
 import com.hypixel.hytale.protocol.Color;
 import dev.hytalemod.jet.JETPlugin;
 import dev.hytalemod.jet.model.ItemCategory;
+import dev.hytalemod.jet.util.TooltipBuilder;
 import dev.hytalemod.jet.storage.BrowserState;
 import dev.hytalemod.jet.util.CategoryUtil;
 import dev.hytalemod.jet.util.InventoryScanner;
@@ -36,6 +37,7 @@ import com.hypixel.hytale.server.core.entity.entities.Player;
 
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.LinkedList;
 
 /**
  * JET Browser GUI with item browsing, recipes, and uses.
@@ -62,10 +64,15 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     private int gridRows; // Configurable grid rows
     private boolean showHiddenItems; // Show items with hidden quality
     private boolean showSalvagerRecipes; // Show salvager recipes
+    private LinkedList<String> viewHistory; // Recently viewed items
+    private boolean historyCollapsed; // Whether history bar is collapsed
+    private static final int MAX_HISTORY_SIZE = 20;
 
     public JETGui(PlayerRef playerRef, CustomPageLifetime lifetime, String initialSearch, BrowserState saved) {
         super(playerRef, lifetime, GuiData.CODEC);
         this.activeFilters = new HashSet<>();
+        this.viewHistory = new LinkedList<>();
+        this.historyCollapsed = false;
 
         if (saved != null) {
             applySavedState(saved);
@@ -81,7 +88,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.modFilter = "";
             this.gridColumns = DEFAULT_ITEMS_PER_ROW;
             this.gridRows = DEFAULT_MAX_ROWS;
-            this.showHiddenItems = false;
+            this.showHiddenItems = true; // Default to true so items like Storm Saplings are visible
             this.showSalvagerRecipes = true;
         }
     }
@@ -112,6 +119,16 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 } catch (IllegalArgumentException ignored) {}
             }
         }
+        // Restore history
+        this.viewHistory.clear();
+        if (s.viewHistory != null) {
+            for (String itemId : s.viewHistory) {
+                if (JETPlugin.ITEMS.containsKey(itemId)) {
+                    this.viewHistory.add(itemId);
+                }
+            }
+        }
+        this.historyCollapsed = s.historyCollapsed;
     }
 
     @Override
@@ -154,6 +171,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         cmd.set("#GridLayout.Entries", gridLayouts);
         cmd.set("#GridLayout.Value", gridColumns + "x" + gridRows);
         cmd.set("#SearchInput.Value", searchQuery != null ? searchQuery : "");
+
+        // Set checkbox states to match defaults
+        cmd.set("#ShowHiddenItems #CheckBox.Value", showHiddenItems);
+        cmd.set("#ShowSalvager #CheckBox.Value", showSalvagerRecipes);
 
         // Grid layout dropdown binding
         events.addEventBinding(
@@ -215,8 +236,13 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         // Clear filters button
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ClearFilters", EventData.of("ClearFilters", "true"), false);
 
+        // History bar buttons
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#ToggleHistory", EventData.of("ToggleHistory", "toggle"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#ClearHistory", EventData.of("ClearHistory", "clear"), false);
+
         buildItemList(ref, cmd, events, store);
         buildRecipePanel(ref, cmd, events, store);
+        buildHistoryBar(cmd, events);
     }
 
     @Override
@@ -341,6 +367,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.usagePage = 0;
             this.activeSection = "craft";
             needsRecipeUpdate = true;
+            addToHistory(data.selectedItem);
         }
 
         // Handle toggle mode - now separate buttons for craft/usage/drops
@@ -405,6 +432,34 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
         }
 
+        // Handle history toggle
+        if (data.toggleHistory != null && "toggle".equals(data.toggleHistory)) {
+            historyCollapsed = !historyCollapsed;
+            UICommandBuilder cmd = new UICommandBuilder();
+            UIEventBuilder events = new UIEventBuilder();
+            buildHistoryBar(cmd, events);
+            sendUpdate(cmd, events, false);
+        }
+
+        // Handle clear history
+        if (data.clearHistory != null && "clear".equals(data.clearHistory)) {
+            viewHistory.clear();
+            UICommandBuilder cmd = new UICommandBuilder();
+            UIEventBuilder events = new UIEventBuilder();
+            buildHistoryBar(cmd, events);
+            sendUpdate(cmd, events, false);
+        }
+
+        // Handle history item click
+        if (data.historyItemClick != null && !data.historyItemClick.isEmpty()) {
+            this.selectedItem = data.historyItemClick;
+            this.craftPage = 0;
+            this.usagePage = 0;
+            this.activeSection = "craft";
+            addToHistory(data.historyItemClick);
+            needsRecipeUpdate = true;
+        }
+
         if (needsItemUpdate || needsRecipeUpdate) {
             UICommandBuilder cmd = new UICommandBuilder();
             UIEventBuilder events = new UIEventBuilder();
@@ -415,6 +470,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
             if (needsRecipeUpdate) {
                 buildRecipePanel(ref, cmd, events, store);
+                // Also update history bar since selecting items adds to history
+                buildHistoryBar(cmd, events);
             }
 
             sendUpdate(cmd, events, false);
@@ -442,11 +499,71 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         for (ItemCategory c : activeFilters) {
             s.activeFilters.add(c.name());
         }
+        s.viewHistory = new ArrayList<>(viewHistory);
+        s.historyCollapsed = historyCollapsed;
         return s;
     }
 
     private void maybeSaveState() {
         JETPlugin.getInstance().getBrowserStateStorage().saveState(playerRef.getUuid(), captureState());
+    }
+
+    private void addToHistory(String itemId) {
+        if (itemId == null || itemId.isEmpty()) return;
+        // Remove if already in history (to move it to front)
+        viewHistory.remove(itemId);
+        // Add to front
+        viewHistory.addFirst(itemId);
+        // Trim if too long
+        while (viewHistory.size() > MAX_HISTORY_SIZE) {
+            viewHistory.removeLast();
+        }
+    }
+
+    private void buildHistoryBar(UICommandBuilder cmd, UIEventBuilder events) {
+        // Show/hide content based on collapsed state
+        cmd.set("#HistoryBar #HistoryContent.Visible", !historyCollapsed);
+        cmd.set("#HistoryBar #ClearHistory.Visible", !historyCollapsed && !viewHistory.isEmpty());
+
+        // Update history bar height based on collapsed state
+        Anchor barAnchor = new Anchor();
+        barAnchor.setHeight(Value.of(historyCollapsed ? 22 : 55));
+        cmd.setObject("#HistoryBar.Anchor", barAnchor);
+
+        // Build history items
+        cmd.clear("#HistoryBar #HistoryItems");
+
+        // Update toggle button text with arrow
+        String arrow = historyCollapsed ? ">" : "v";
+        cmd.set("#HistoryBar #ToggleHistory.Text", arrow);
+
+        if (viewHistory.isEmpty()) {
+            cmd.set("#HistoryBar #HistoryLabel.Text", "(empty)");
+            return;
+        }
+
+        cmd.set("#HistoryBar #HistoryLabel.Text", "(" + viewHistory.size() + ")");
+
+        String language = playerRef.getLanguage();
+        int displayCount = Math.min(viewHistory.size(), 15); // Show up to 15 items
+
+        for (int i = 0; i < displayCount; i++) {
+            String itemId = viewHistory.get(i);
+            Item item = JETPlugin.ITEMS.get(itemId);
+            if (item == null) continue;
+
+            // Create a clickable button with item icon
+            cmd.appendInline("#HistoryBar #HistoryItems",
+                    "Button #HistoryItem" + i + " { Padding: (Right: 3); Background: (Color: #00000000); Style: (Hovered: (Background: #ffffff30), Pressed: (Background: #ffffff50)); ItemIcon { Anchor: (Width: 28, Height: 28); Visible: true; } }");
+            cmd.set("#HistoryBar #HistoryItems[" + i + "][0].ItemId", itemId);
+
+            // Add tooltip with item name
+            String displayName = getDisplayName(item, language);
+            cmd.set("#HistoryBar #HistoryItems[" + i + "].TooltipTextSpans", Message.raw(displayName));
+
+            // Add click event binding
+            events.addEventBinding(CustomUIEventBindingType.Activating, "#HistoryBar #HistoryItems[" + i + "]", EventData.of("HistoryItemClick", itemId), false);
+        }
     }
 
     private void buildItemList(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
@@ -556,7 +673,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 if (quality != null) {
                     String slotTexture = quality.getSlotTexture();
                     if (slotTexture != null && !slotTexture.isEmpty()) {
-                        cmd.set(sel + ".AssetPath", slotTexture);
+                        cmd.set(sel + " #ItemButton #QualityBg.AssetPath", slotTexture);
                     }
                 }
             } catch (Exception e) {
@@ -661,8 +778,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
 
         // Use advanced search parser for @ (namespace) and - (exclusion) syntax
+        // Pass translated name so search works on both item ID and display name
         SearchParser parser = new SearchParser(query);
-        return parser.matches(item);
+        String translatedName = getDisplayName(item, language);
+        return parser.matches(item, translatedName);
     }
 
     private boolean matchesResourceTypeTag(Item item, String tag) {
@@ -947,7 +1066,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
             String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
 
-            buildRecipeDisplay(cmd, recipe, rSel, ref);
+            buildRecipeDisplay(cmd, events, recipe, rSel, ref);
         }
     }
 
@@ -990,7 +1109,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
             String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
 
-            buildRecipeDisplay(cmd, recipe, rSel, ref);
+            buildRecipeDisplay(cmd, events, recipe, rSel, ref);
         }
     }
 
@@ -1159,7 +1278,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         return String.join(" ", parts);
     }
 
-    private void buildRecipeDisplay(UICommandBuilder cmd, CraftingRecipe recipe, String rSel, Ref<EntityStore> ref) {
+    private void buildRecipeDisplay(UICommandBuilder cmd, UIEventBuilder events, CraftingRecipe recipe, String rSel, Ref<EntityStore> ref) {
         String recipeId = recipe.getId();
         if (recipeId.contains(":")) recipeId = recipeId.substring(recipeId.indexOf(":") + 1);
 
@@ -1191,10 +1310,13 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             int requiredQty = input.getQuantity();
 
             if (itemId != null) {
-                // Handle specific item
+                // Handle specific item - wrap in button for click handling
                 cmd.appendInline(rSel + " #InputItems",
-                        "Group { LayoutMode: Top; Padding: (Right: 6); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
+                        "Button { LayoutMode: Top; Padding: (Right: 6); Background: (Color: #00000000); Style: (Hovered: (Background: #ffffff30), Pressed: (Background: #ffffff50)); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
                 cmd.set(rSel + " #InputItems[" + j + "][0].ItemId", itemId);
+
+                // Add click event to navigate to this item
+                events.addEventBinding(CustomUIEventBindingType.Activating, rSel + " #InputItems[" + j + "]", EventData.of("SelectedItem", itemId), false);
 
                 // Count items in inventory
                 String labelText;
@@ -1253,10 +1375,14 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             for (int j = 0; j < outputs.length; j++) {
                 MaterialQuantity output = outputs[j];
                 if (output != null && output.getItemId() != null) {
+                    String outputItemId = output.getItemId();
                     cmd.appendInline(rSel + " #OutputItems",
-                            "Group { LayoutMode: Top; Padding: (Right: 6); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
-                    cmd.set(rSel + " #OutputItems[" + j + "][0].ItemId", output.getItemId());
+                            "Button { LayoutMode: Top; Padding: (Right: 6); Background: (Color: #00000000); Style: (Hovered: (Background: #ffffff30), Pressed: (Background: #ffffff50)); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
+                    cmd.set(rSel + " #OutputItems[" + j + "][0].ItemId", outputItemId);
                     cmd.set(rSel + " #OutputItems[" + j + "][1].Text", "x" + output.getQuantity());
+
+                    // Add click event to navigate to this item
+                    events.addEventBinding(CustomUIEventBindingType.Activating, rSel + " #OutputItems[" + j + "]", EventData.of("SelectedItem", outputItemId), false);
                 }
             }
         }
@@ -1360,20 +1486,164 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     }
 
     private Message buildTooltip(String itemId, Item item, String language) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(getDisplayName(item, language)).append("\n");
-        sb.append("-------------------\n");
-        sb.append("ID: ").append(itemId).append("\n");
-        sb.append("Stack: ").append(item.getMaxStack());
+        TooltipBuilder tooltip = TooltipBuilder.create();
 
+        // Title with colored quality
+        Message coloredName = getColoredItemName(item, getDisplayName(item, language));
+        tooltip.append(coloredName.bold(true)).nl();
+
+        // Description with space
+        try {
+            String descKey = item.getDescriptionTranslationKey();
+            if (descKey != null && !descKey.isEmpty()) {
+                String description = I18nModule.get().getMessage(language, descKey);
+                if (description != null && !description.isEmpty()) {
+                    tooltip.nl();
+                    tooltip.append(description, "#aaaaaa");
+                    tooltip.nl();
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // General Info
+        tooltip.separator();
         if (item.getMaxDurability() > 0) {
-            sb.append("\nDurability: ").append((int)item.getMaxDurability());
+            tooltip.line("Durability", String.format("%.0f", item.getMaxDurability()));
+        }
+        tooltip.line("Max Stack", String.valueOf(item.getMaxStack()));
+
+        // Quality with color
+        try {
+            int qualityIndex = item.getQualityIndex();
+            ItemQuality quality = ItemQuality.getAssetMap().getAsset(qualityIndex);
+            if (quality != null) {
+                String qualityName = I18nModule.get().getMessage(language, quality.getLocalizationKey());
+                if (qualityName != null) {
+                    tooltip.line("Quality", qualityName);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // Weapon Stats
+        if (item.getWeapon() != null) {
+            tooltip.separator();
+            boolean hasWeaponStats = false;
+
+            try {
+                // Damage interactions
+                Method getDamageMethod = item.getWeapon().getClass().getMethod("getDamageInteractions");
+                Object damageInteractions = getDamageMethod.invoke(item.getWeapon());
+                if (damageInteractions instanceof java.util.Map) {
+                    java.util.Map<?, ?> damageMap = (java.util.Map<?, ?>) damageInteractions;
+                    if (!damageMap.isEmpty()) {
+                        hasWeaponStats = true;
+                        for (java.util.Map.Entry<?, ?> entry : damageMap.entrySet()) {
+                            String interactionName = entry.getKey().toString().replace("_", " ");
+                            String value = entry.getValue().toString();
+                            tooltip.line(interactionName, value);
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            // Stat modifiers (e.g., attack speed)
+            try {
+                Method getStatModsMethod = item.getWeapon().getClass().getMethod("getStatModifiers");
+                Object statMods = getStatModsMethod.invoke(item.getWeapon());
+                if (statMods != null) {
+                    // Handle Int2ObjectMap
+                    Method int2ObjectEntrySetMethod = statMods.getClass().getMethod("int2ObjectEntrySet");
+                    Object entrySet = int2ObjectEntrySetMethod.invoke(statMods);
+
+                    if (entrySet instanceof java.util.Set) {
+                        for (Object entryObj : (java.util.Set<?>) entrySet) {
+                            try {
+                                Method getIntKeyMethod = entryObj.getClass().getMethod("getIntKey");
+                                int statTypeIndex = (Integer) getIntKeyMethod.invoke(entryObj);
+
+                                // Get the stat type name
+                                Class<?> entityStatTypeClass = Class.forName("com.hypixel.hytale.server.core.modules.entitystats.asset.EntityStatType");
+                                Method getAssetMapMethod = entityStatTypeClass.getMethod("getAssetMap");
+                                Object assetMap = getAssetMapMethod.invoke(null);
+                                Method getAssetMethod = assetMap.getClass().getMethod("getAsset", int.class);
+                                Object entityStatType = getAssetMethod.invoke(assetMap, statTypeIndex);
+
+                                if (entityStatType != null) {
+                                    Method getIdMethod = entityStatType.getClass().getMethod("getId");
+                                    String statId = (String) getIdMethod.invoke(entityStatType);
+
+                                    Method getValueMethod = entryObj.getClass().getMethod("getValue");
+                                    Object[] modifiers = (Object[]) getValueMethod.invoke(entryObj);
+
+                                    for (Object modifier : modifiers) {
+                                        String formatted = formatStaticModifier(modifier);
+                                        tooltip.line(statId, "+" + formatted);
+                                        hasWeaponStats = true;
+                                    }
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
         }
 
-        sb.append("\n-------------------");
-        sb.append("\nClick to view recipes");
+        // Armor Stats
+        try {
+            Object armor = item.getArmor();
+            if (armor != null) {
+                boolean hasArmorStats = false;
 
-        return Message.raw(sb.toString());
+                // Damage Resistance
+                Method getResMethod = armor.getClass().getMethod("getDamageResistanceValues");
+                Object resistValues = getResMethod.invoke(armor);
+                if (resistValues != null && resistValues instanceof java.util.Map) {
+                    java.util.Map<?, ?> resMap = (java.util.Map<?, ?>) resistValues;
+                    if (!resMap.isEmpty()) {
+                        if (!hasArmorStats) {
+                            tooltip.separator();
+                            hasArmorStats = true;
+                        }
+                        for (java.util.Map.Entry<?, ?> entry : resMap.entrySet()) {
+                            try {
+                                Object damageCause = entry.getKey();
+                                Method getIdMethod = damageCause.getClass().getMethod("getId");
+                                String causeId = (String) getIdMethod.invoke(damageCause);
+
+                                Object[] modifiers = (Object[]) entry.getValue();
+                                for (Object modifier : modifiers) {
+                                    String formatted = formatStaticModifier(modifier);
+                                    tooltip.line(causeId + " Resistance", "+" + formatted);
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // Tool Stats
+        if (item.getTool() != null) {
+            tooltip.separator();
+            try {
+                Object[] specs = item.getTool().getSpecs();
+                if (specs != null && specs.length > 0) {
+                    for (Object spec : specs) {
+                        Method getGatherType = spec.getClass().getMethod("getGatherType");
+                        Method getPower = spec.getClass().getMethod("getPower");
+                        String gatherType = (String) getGatherType.invoke(spec);
+                        float power = (Float) getPower.invoke(spec);
+                        tooltip.line(gatherType, String.format("%.2f", power));
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // Usage hint
+        tooltip.separator();
+        tooltip.append("Click to view recipes", "#55AAFF");
+
+        return tooltip.build();
     }
 
     private void buildItemStats(Item item, UICommandBuilder cmd, String language) {
@@ -1562,6 +1832,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("@ShowSalvagerRecipes", Codec.BOOLEAN), (d, v) -> d.showSalvagerRecipes = v, d -> d.showSalvagerRecipes)
                 .addField(new KeyedCodec<>("GiveItem", Codec.STRING), (d, v) -> d.giveItem = v, d -> d.giveItem)
                 .addField(new KeyedCodec<>("GiveItemStack", Codec.STRING), (d, v) -> d.giveItemStack = v, d -> d.giveItemStack)
+                .addField(new KeyedCodec<>("ToggleHistory", Codec.STRING), (d, v) -> d.toggleHistory = v, d -> d.toggleHistory)
+                .addField(new KeyedCodec<>("ClearHistory", Codec.STRING), (d, v) -> d.clearHistory = v, d -> d.clearHistory)
+                .addField(new KeyedCodec<>("HistoryItemClick", Codec.STRING), (d, v) -> d.historyItemClick = v, d -> d.historyItemClick)
                 .build();
 
         private String searchQuery;
@@ -1580,28 +1853,33 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         private Boolean showSalvagerRecipes;
         private String giveItem;
         private String giveItemStack;
+        private String toggleHistory;
+        private String clearHistory;
+        private String historyItemClick;
 
         public GuiData() {}
     }
 
     private String formatStaticModifier(Object modifier) {
         try {
-            Class<?> staticModifierClass = Class.forName("com.hypixel.hytale.server.core.modules.entitystats.StaticModifier");
-            Method getCalculationTypeMethod = staticModifierClass.getMethod("getCalculationType");
-            Method getAmountMethod = staticModifierClass.getMethod("getAmount");
+            // Cast to StaticModifier directly
+            com.hypixel.hytale.server.core.modules.entitystats.modifier.StaticModifier staticMod =
+                (com.hypixel.hytale.server.core.modules.entitystats.modifier.StaticModifier) modifier;
 
-            Object calculationType = getCalculationTypeMethod.invoke(modifier);
-            float amount = (Float) getAmountMethod.invoke(modifier);
+            com.hypixel.hytale.server.core.modules.entitystats.modifier.StaticModifier.CalculationType calcType =
+                staticMod.getCalculationType();
+            float amount = staticMod.getAmount();
 
-            String calculationTypeName = calculationType.toString();
-            if (calculationTypeName.equals("ADDITIVE")) {
-                return String.format("%.0f", amount);
-            } else if (calculationTypeName.equals("MULTIPLICATIVE")) {
-                return String.format("%.0f", amount * 100.0f) + "%";
+            switch (calcType) {
+                case ADDITIVE:
+                    return String.format("%.0f", amount);
+                case MULTIPLICATIVE:
+                    return String.format("%.0f%%", amount * 100.0f);
+                default:
+                    return String.valueOf(amount);
             }
         } catch (Exception e) {
-            return modifier.toString();
+            return "?";
         }
-        return "";
     }
 }

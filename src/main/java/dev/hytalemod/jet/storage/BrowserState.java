@@ -22,6 +22,8 @@ public class BrowserState {
     public int gridRows = 8;
     public boolean showHiddenItems = false;
     public boolean showSalvagerRecipes = true;
+    public List<String> viewHistory = new ArrayList<>();
+    public boolean historyCollapsed = false;
 
     public BrowserState() {}
 }

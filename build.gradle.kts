@@ -70,6 +70,17 @@ tasks {
     build {
         dependsOn(shadowJar)
     }
+
+    // Copy JAR to Hytale Mods folder after successful build
+    register<Copy>("deployToMods") {
+        dependsOn(shadowJar)
+        from(shadowJar.get().archiveFile)
+        into("C:/Users/benja/AppData/Roaming/Hytale/UserData/Mods")
+    }
+
+    build {
+        finalizedBy("deployToMods")
+    }
 }
 
 // Configure Java toolchain

@@ -1,6 +1,6 @@
 Group {
   LayoutMode: Top;
-  Padding: (Full: 8, Bottom: 12);
+  Padding: (Full: 10, Bottom: 12);
   Background: (Color: #1e1e1e(0.9));
   Anchor: (Bottom: 8);
 
@@ -10,7 +10,16 @@ Group {
       RenderBold: true,
       TextColor: #ffcc66
     );
-    Padding: (Bottom: 6);
+    Padding: (Bottom: 4);
+  }
+
+  Label #BenchInfo {
+    Style: (
+      FontSize: 11,
+      TextColor: #88aaff
+    );
+    Padding: (Bottom: 8);
+    Visible: false;
   }
 
   Group {
@@ -22,8 +31,8 @@ Group {
         FontSize: 11,
         TextColor: #ff8888
       );
-      Text: "Input:";
-      Anchor: (Width: 50);
+      Text: "In:";
+      Anchor: (Width: 30);
     }
 
     Group #InputItems {
@@ -34,15 +43,15 @@ Group {
 
   Group {
     LayoutMode: Left;
-    Padding: (Top: 4);
+    Padding: (Top: 6);
 
     Label {
       Style: (
         FontSize: 11,
         TextColor: #88ff88
       );
-      Text: "Output:";
-      Anchor: (Width: 50);
+      Text: "Out:";
+      Anchor: (Width: 30);
     }
 
     Group #OutputItems {

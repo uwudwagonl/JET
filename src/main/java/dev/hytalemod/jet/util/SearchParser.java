@@ -38,6 +38,10 @@ public class SearchParser {
     }
 
     public boolean matches(Item item) {
+        return matches(item, null);
+    }
+
+    public boolean matches(Item item, String translatedName) {
         String itemId = item.getId().toLowerCase();
 
         // Check namespace filter (@mod_name)
@@ -48,9 +52,19 @@ public class SearchParser {
             }
         }
 
+        // Prepare translated name for searching if provided
+        String searchableTranslation = null;
+        if (translatedName != null && !translatedName.isEmpty()) {
+            searchableTranslation = translatedName.toLowerCase();
+        }
+
         // Check exclusions (-term) - if any exclusion term matches, item is filtered out
         for (String excludeTerm : excludeTerms) {
             if (itemId.contains(excludeTerm)) {
+                return false;
+            }
+            // Also check translated name
+            if (searchableTranslation != null && searchableTranslation.contains(excludeTerm)) {
                 return false;
             }
         }
@@ -59,7 +73,13 @@ public class SearchParser {
         if (!includeTerms.isEmpty()) {
             boolean anyMatch = false;
             for (String includeTerm : includeTerms) {
+                // Check item ID
                 if (itemId.contains(includeTerm)) {
+                    anyMatch = true;
+                    break;
+                }
+                // Also check translated name
+                if (searchableTranslation != null && searchableTranslation.contains(includeTerm)) {
                     anyMatch = true;
                     break;
                 }
