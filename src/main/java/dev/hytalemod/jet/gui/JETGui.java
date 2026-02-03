@@ -37,6 +37,7 @@ import com.hypixel.hytale.server.core.entity.entities.Player;
 
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.LinkedList;
 
 /**
  * JET Browser GUI with item browsing, recipes, and uses.
@@ -63,10 +64,15 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     private int gridRows; // Configurable grid rows
     private boolean showHiddenItems; // Show items with hidden quality
     private boolean showSalvagerRecipes; // Show salvager recipes
+    private LinkedList<String> viewHistory; // Recently viewed items
+    private boolean historyCollapsed; // Whether history bar is collapsed
+    private static final int MAX_HISTORY_SIZE = 20;
 
     public JETGui(PlayerRef playerRef, CustomPageLifetime lifetime, String initialSearch, BrowserState saved) {
         super(playerRef, lifetime, GuiData.CODEC);
         this.activeFilters = new HashSet<>();
+        this.viewHistory = new LinkedList<>();
+        this.historyCollapsed = false;
 
         if (saved != null) {
             applySavedState(saved);
@@ -113,6 +119,16 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 } catch (IllegalArgumentException ignored) {}
             }
         }
+        // Restore history
+        this.viewHistory.clear();
+        if (s.viewHistory != null) {
+            for (String itemId : s.viewHistory) {
+                if (JETPlugin.ITEMS.containsKey(itemId)) {
+                    this.viewHistory.add(itemId);
+                }
+            }
+        }
+        this.historyCollapsed = s.historyCollapsed;
     }
 
     @Override
@@ -220,8 +236,13 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         // Clear filters button
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ClearFilters", EventData.of("ClearFilters", "true"), false);
 
+        // History bar buttons
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#ToggleHistory", EventData.of("ToggleHistory", "toggle"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#ClearHistory", EventData.of("ClearHistory", "clear"), false);
+
         buildItemList(ref, cmd, events, store);
         buildRecipePanel(ref, cmd, events, store);
+        buildHistoryBar(cmd, events);
     }
 
     @Override
@@ -346,6 +367,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.usagePage = 0;
             this.activeSection = "craft";
             needsRecipeUpdate = true;
+            addToHistory(data.selectedItem);
         }
 
         // Handle toggle mode - now separate buttons for craft/usage/drops
@@ -410,6 +432,34 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
         }
 
+        // Handle history toggle
+        if (data.toggleHistory != null && "toggle".equals(data.toggleHistory)) {
+            historyCollapsed = !historyCollapsed;
+            UICommandBuilder cmd = new UICommandBuilder();
+            UIEventBuilder events = new UIEventBuilder();
+            buildHistoryBar(cmd, events);
+            sendUpdate(cmd, events, false);
+        }
+
+        // Handle clear history
+        if (data.clearHistory != null && "clear".equals(data.clearHistory)) {
+            viewHistory.clear();
+            UICommandBuilder cmd = new UICommandBuilder();
+            UIEventBuilder events = new UIEventBuilder();
+            buildHistoryBar(cmd, events);
+            sendUpdate(cmd, events, false);
+        }
+
+        // Handle history item click
+        if (data.historyItemClick != null && !data.historyItemClick.isEmpty()) {
+            this.selectedItem = data.historyItemClick;
+            this.craftPage = 0;
+            this.usagePage = 0;
+            this.activeSection = "craft";
+            addToHistory(data.historyItemClick);
+            needsRecipeUpdate = true;
+        }
+
         if (needsItemUpdate || needsRecipeUpdate) {
             UICommandBuilder cmd = new UICommandBuilder();
             UIEventBuilder events = new UIEventBuilder();
@@ -420,6 +470,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
             if (needsRecipeUpdate) {
                 buildRecipePanel(ref, cmd, events, store);
+                // Also update history bar since selecting items adds to history
+                buildHistoryBar(cmd, events);
             }
 
             sendUpdate(cmd, events, false);
@@ -447,11 +499,71 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         for (ItemCategory c : activeFilters) {
             s.activeFilters.add(c.name());
         }
+        s.viewHistory = new ArrayList<>(viewHistory);
+        s.historyCollapsed = historyCollapsed;
         return s;
     }
 
     private void maybeSaveState() {
         JETPlugin.getInstance().getBrowserStateStorage().saveState(playerRef.getUuid(), captureState());
+    }
+
+    private void addToHistory(String itemId) {
+        if (itemId == null || itemId.isEmpty()) return;
+        // Remove if already in history (to move it to front)
+        viewHistory.remove(itemId);
+        // Add to front
+        viewHistory.addFirst(itemId);
+        // Trim if too long
+        while (viewHistory.size() > MAX_HISTORY_SIZE) {
+            viewHistory.removeLast();
+        }
+    }
+
+    private void buildHistoryBar(UICommandBuilder cmd, UIEventBuilder events) {
+        // Show/hide content based on collapsed state
+        cmd.set("#HistoryBar #HistoryContent.Visible", !historyCollapsed);
+        cmd.set("#HistoryBar #ClearHistory.Visible", !historyCollapsed && !viewHistory.isEmpty());
+
+        // Update history bar height based on collapsed state
+        Anchor barAnchor = new Anchor();
+        barAnchor.setHeight(Value.of(historyCollapsed ? 22 : 55));
+        cmd.setObject("#HistoryBar.Anchor", barAnchor);
+
+        // Build history items
+        cmd.clear("#HistoryBar #HistoryItems");
+
+        // Update toggle button text with arrow
+        String arrow = historyCollapsed ? ">" : "v";
+        cmd.set("#HistoryBar #ToggleHistory.Text", arrow);
+
+        if (viewHistory.isEmpty()) {
+            cmd.set("#HistoryBar #HistoryLabel.Text", "(empty)");
+            return;
+        }
+
+        cmd.set("#HistoryBar #HistoryLabel.Text", "(" + viewHistory.size() + ")");
+
+        String language = playerRef.getLanguage();
+        int displayCount = Math.min(viewHistory.size(), 15); // Show up to 15 items
+
+        for (int i = 0; i < displayCount; i++) {
+            String itemId = viewHistory.get(i);
+            Item item = JETPlugin.ITEMS.get(itemId);
+            if (item == null) continue;
+
+            // Create a clickable button with item icon
+            cmd.appendInline("#HistoryBar #HistoryItems",
+                    "Button #HistoryItem" + i + " { Padding: (Right: 3); Background: (Color: #00000000); Style: (Hovered: (Background: #ffffff30), Pressed: (Background: #ffffff50)); ItemIcon { Anchor: (Width: 28, Height: 28); Visible: true; } }");
+            cmd.set("#HistoryBar #HistoryItems[" + i + "][0].ItemId", itemId);
+
+            // Add tooltip with item name
+            String displayName = getDisplayName(item, language);
+            cmd.set("#HistoryBar #HistoryItems[" + i + "].TooltipTextSpans", Message.raw(displayName));
+
+            // Add click event binding
+            events.addEventBinding(CustomUIEventBindingType.Activating, "#HistoryBar #HistoryItems[" + i + "]", EventData.of("HistoryItemClick", itemId), false);
+        }
     }
 
     private void buildItemList(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
@@ -561,7 +673,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 if (quality != null) {
                     String slotTexture = quality.getSlotTexture();
                     if (slotTexture != null && !slotTexture.isEmpty()) {
-                        cmd.set(sel + ".AssetPath", slotTexture);
+                        cmd.set(sel + " #ItemButton #QualityBg.AssetPath", slotTexture);
                     }
                 }
             } catch (Exception e) {
@@ -954,7 +1066,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
             String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
 
-            buildRecipeDisplay(cmd, recipe, rSel, ref);
+            buildRecipeDisplay(cmd, events, recipe, rSel, ref);
         }
     }
 
@@ -997,7 +1109,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
             String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
 
-            buildRecipeDisplay(cmd, recipe, rSel, ref);
+            buildRecipeDisplay(cmd, events, recipe, rSel, ref);
         }
     }
 
@@ -1166,7 +1278,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         return String.join(" ", parts);
     }
 
-    private void buildRecipeDisplay(UICommandBuilder cmd, CraftingRecipe recipe, String rSel, Ref<EntityStore> ref) {
+    private void buildRecipeDisplay(UICommandBuilder cmd, UIEventBuilder events, CraftingRecipe recipe, String rSel, Ref<EntityStore> ref) {
         String recipeId = recipe.getId();
         if (recipeId.contains(":")) recipeId = recipeId.substring(recipeId.indexOf(":") + 1);
 
@@ -1198,10 +1310,13 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             int requiredQty = input.getQuantity();
 
             if (itemId != null) {
-                // Handle specific item
+                // Handle specific item - wrap in button for click handling
                 cmd.appendInline(rSel + " #InputItems",
-                        "Group { LayoutMode: Top; Padding: (Right: 6); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
+                        "Button { LayoutMode: Top; Padding: (Right: 6); Background: (Color: #00000000); Style: (Hovered: (Background: #ffffff30), Pressed: (Background: #ffffff50)); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
                 cmd.set(rSel + " #InputItems[" + j + "][0].ItemId", itemId);
+
+                // Add click event to navigate to this item
+                events.addEventBinding(CustomUIEventBindingType.Activating, rSel + " #InputItems[" + j + "]", EventData.of("SelectedItem", itemId), false);
 
                 // Count items in inventory
                 String labelText;
@@ -1260,10 +1375,14 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             for (int j = 0; j < outputs.length; j++) {
                 MaterialQuantity output = outputs[j];
                 if (output != null && output.getItemId() != null) {
+                    String outputItemId = output.getItemId();
                     cmd.appendInline(rSel + " #OutputItems",
-                            "Group { LayoutMode: Top; Padding: (Right: 6); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
-                    cmd.set(rSel + " #OutputItems[" + j + "][0].ItemId", output.getItemId());
+                            "Button { LayoutMode: Top; Padding: (Right: 6); Background: (Color: #00000000); Style: (Hovered: (Background: #ffffff30), Pressed: (Background: #ffffff50)); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
+                    cmd.set(rSel + " #OutputItems[" + j + "][0].ItemId", outputItemId);
                     cmd.set(rSel + " #OutputItems[" + j + "][1].Text", "x" + output.getQuantity());
+
+                    // Add click event to navigate to this item
+                    events.addEventBinding(CustomUIEventBindingType.Activating, rSel + " #OutputItems[" + j + "]", EventData.of("SelectedItem", outputItemId), false);
                 }
             }
         }
@@ -1713,6 +1832,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("@ShowSalvagerRecipes", Codec.BOOLEAN), (d, v) -> d.showSalvagerRecipes = v, d -> d.showSalvagerRecipes)
                 .addField(new KeyedCodec<>("GiveItem", Codec.STRING), (d, v) -> d.giveItem = v, d -> d.giveItem)
                 .addField(new KeyedCodec<>("GiveItemStack", Codec.STRING), (d, v) -> d.giveItemStack = v, d -> d.giveItemStack)
+                .addField(new KeyedCodec<>("ToggleHistory", Codec.STRING), (d, v) -> d.toggleHistory = v, d -> d.toggleHistory)
+                .addField(new KeyedCodec<>("ClearHistory", Codec.STRING), (d, v) -> d.clearHistory = v, d -> d.clearHistory)
+                .addField(new KeyedCodec<>("HistoryItemClick", Codec.STRING), (d, v) -> d.historyItemClick = v, d -> d.historyItemClick)
                 .build();
 
         private String searchQuery;
@@ -1731,6 +1853,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         private Boolean showSalvagerRecipes;
         private String giveItem;
         private String giveItemStack;
+        private String toggleHistory;
+        private String clearHistory;
+        private String historyItemClick;
 
         public GuiData() {}
     }

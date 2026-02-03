@@ -36,7 +36,13 @@
       "WebFetch(domain:www.curseforge.com)",
       "Bash(findstr:*)",
       "Bash(cmd /c \"where jd-cli 2>nul || echo Not found\")",
-      "Bash(cmd /c \"dir /s /b C:\\\\Users\\\\benja\\\\Downloads\\\\biv_check\\\\*.class 2>nul | findstr BetterItemViewer\")"
+      "Bash(cmd /c \"dir /s /b C:\\\\Users\\\\benja\\\\Downloads\\\\biv_check\\\\*.class 2>nul | findstr BetterItemViewer\")",
+      "Bash(\"/c/Program Files/Java/jdk-25/bin/javap\" -c -p /tmp/biv_extract/me/drex/betteritemviewer/interaction/OpenBetterItemViewerInteraction.class)",
+      "Bash(\"/c/Program Files/Java/jdk-25/bin/javap\" -c -p /tmp/biv_extract/me/drex/betteritemviewer/Main.class)",
+      "Bash(\"/c/Program Files/Java/jdk-25/bin/javap\" -c -p \"C:/Users/benja/OneDrive/Desktop/hytale/JET/libs/hytale-server.jar\")",
+      "Bash(identify:*)",
+      "Bash(python3:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

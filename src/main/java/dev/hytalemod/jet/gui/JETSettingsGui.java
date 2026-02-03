@@ -178,7 +178,7 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
 
         // Save config file
         try {
-            plugin.getLogger().at(Level.INFO).log("[JET] Settings saved by " + playerRef.getUsername());
+            plugin.log(Level.INFO, "[JET] Settings saved by " + playerRef.getUsername());
             if (needsRestart) {
                 playerRef.sendMessage(Message.raw("§e[JET] O key binding changed. Restart required for changes to take effect."));
             } else {

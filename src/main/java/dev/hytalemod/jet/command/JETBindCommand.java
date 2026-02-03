@@ -15,10 +15,6 @@ import dev.hytalemod.jet.JETPlugin;
 import dev.hytalemod.jet.config.JETConfig;
 
 import javax.annotation.Nonnull;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 
@@ -70,7 +66,7 @@ public class JETBindCommand extends AbstractCommand {
 
         // Toggle the setting
         config.bindOKey = !config.bindOKey;
-        saveConfig(plugin);
+        plugin.saveConfig();
 
         playerRef.sendMessage(Message.raw("§b━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
         playerRef.sendMessage(Message.raw("§b[JET] O Key Binding"));
@@ -91,19 +87,6 @@ public class JETBindCommand extends AbstractCommand {
         playerRef.sendMessage(Message.raw("§b━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
 
         String action = config.bindOKey ? "enabled" : "disabled";
-        plugin.getLogger().at(Level.INFO).log("[JET] O key binding " + action + " by " + playerRef.getUsername());
-    }
-
-    private void saveConfig(JETPlugin plugin) {
-        try {
-            Path configDir = plugin.getFile().getParent().resolve("JET");
-            Files.createDirectories(configDir);
-            Path configPath = configDir.resolve("JET_config.json");
-
-            String json = new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(plugin.getConfig());
-            Files.writeString(configPath, json, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            plugin.getLogger().at(Level.WARNING).log("[JET] Failed to save config: " + e.getMessage());
-        }
+        plugin.log(Level.INFO, "[JET] O key binding " + action + " by " + playerRef.getUsername());
     }
 }

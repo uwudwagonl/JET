@@ -1,0 +1,27 @@
+{
+	"TranslationProperties": {
+		"Name": "Pex Glyph"
+	},
+	"MaxStack": 1,
+	"Utility": {
+		"Usable": true
+	},
+	"Model": "Items/Weapons/Spellbook/Grimoire.blockymodel",
+	"Texture": "Items/Weapons/Spellbook/Grimoire_Purple_Texture.png",
+	"Icon": "Icons/Items/Pex_Glyph.png",
+	"IconProperties": {
+		"Scale": 1.0,
+		"Rotation": [0, 180, 0],
+		"Translation": [0, 0]
+	},
+	"UsePlayerAnimations": false,
+	"Interactions": {
+		"Secondary": {
+			"Interactions": [
+				{
+					"Type": "OpenJET"
+				}
+			]
+		}
+	}
+}

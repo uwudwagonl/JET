@@ -33,10 +33,7 @@ public class OKeyPacketFilter implements PlayerPacketFilter {
             if (chain == null) continue;
 
             if (chain.interactionType == InteractionType.GameModeSwap) {
-                plugin.getLogger().at(java.util.logging.Level.INFO).log("[JET] O key pressed by " + playerRef.getUsername());
-                boolean result = plugin.handleGameModeSwap(playerRef);
-                plugin.getLogger().at(java.util.logging.Level.INFO).log("[JET] GameModeSwap handled, cancelled: " + result);
-                return result;
+                return plugin.handleGameModeSwap(playerRef);
             }
         }
 

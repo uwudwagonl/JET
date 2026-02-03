@@ -16,14 +16,13 @@ import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.protocol.GameMode;
+import com.hypixel.hytale.server.core.modules.interaction.interaction.config.Interaction;
 import dev.hytalemod.jet.command.JETBindCommand;
 import dev.hytalemod.jet.command.JETCommand;
-import dev.hytalemod.jet.command.JETDropsCommand;
-import dev.hytalemod.jet.command.JETInfoCommand;
-import dev.hytalemod.jet.command.JETListCommand;
 import dev.hytalemod.jet.command.JETPinnedCommand;
 import dev.hytalemod.jet.command.JETSettingsCommand;
 import dev.hytalemod.jet.config.JETConfig;
+import dev.hytalemod.jet.interaction.OpenJETInteraction;
 import dev.hytalemod.jet.filter.OKeyPacketFilter;
 import dev.hytalemod.jet.gui.JETGui;
 import dev.hytalemod.jet.registry.DropListRegistry;
@@ -32,14 +31,19 @@ import dev.hytalemod.jet.registry.RecipeRegistry;
 import dev.hytalemod.jet.storage.BrowserStateStorage;
 import dev.hytalemod.jet.storage.PinnedItemsStorage;
 
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * JET - Item Encyclopedia Plugin
@@ -70,8 +74,42 @@ public class JETPlugin extends JavaPlugin {
     public static Map<String, List<String>> ITEM_TO_RECIPES = new HashMap<>();
     public static Map<String, List<String>> ITEM_FROM_RECIPES = new HashMap<>();
 
+    // Custom JET log file writer
+    private PrintWriter jetLogWriter;
+    private final SimpleDateFormat logDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
     public JETPlugin(JavaPluginInit init) {
         super(init);
+    }
+
+    /**
+     * Get the JET data directory in UserData/JET (not Mods folder)
+     */
+    public static Path getJetDataDirectory() {
+        String os = System.getProperty("os.name").toLowerCase();
+        String userHome = System.getProperty("user.home");
+        if (os.contains("win")) {
+            return Paths.get(userHome, "AppData", "Roaming", "Hytale", "UserData", "JET");
+        } else if (os.contains("mac")) {
+            return Paths.get(userHome, "Library", "Application Support", "Hytale", "UserData", "JET");
+        } else {
+            return Paths.get(userHome, ".local", "share", "Hytale", "UserData", "JET");
+        }
+    }
+
+    /**
+     * Get the JET logs directory in UserData/Logs/jet_logs
+     */
+    public static Path getLogsDirectory() {
+        String os = System.getProperty("os.name").toLowerCase();
+        String userHome = System.getProperty("user.home");
+        if (os.contains("win")) {
+            return Paths.get(userHome, "AppData", "Roaming", "Hytale", "UserData", "Logs", "jet_logs");
+        } else if (os.contains("mac")) {
+            return Paths.get(userHome, "Library", "Application Support", "Hytale", "UserData", "Logs", "jet_logs");
+        } else {
+            return Paths.get(userHome, ".local", "share", "Hytale", "UserData", "Logs", "jet_logs");
+        }
     }
 
     @Override
@@ -79,6 +117,9 @@ public class JETPlugin extends JavaPlugin {
         super.setup();
 
         instance = this;
+
+        // Setup custom JET logger that writes to UserData/Logs/jet_logs
+        setupJetLogger();
         itemRegistry = new ItemRegistry();
         recipeRegistry = new RecipeRegistry();
         dropListRegistry = new DropListRegistry();
@@ -92,9 +133,6 @@ public class JETPlugin extends JavaPlugin {
 
         // Register commands
         getCommandRegistry().registerCommand(new JETCommand());
-        getCommandRegistry().registerCommand(new JETDropsCommand());
-        getCommandRegistry().registerCommand(new JETInfoCommand());
-        getCommandRegistry().registerCommand(new JETListCommand());
         getCommandRegistry().registerCommand(new JETPinnedCommand());
         getCommandRegistry().registerCommand(new JETSettingsCommand());
         getCommandRegistry().registerCommand(new JETBindCommand());
@@ -104,15 +142,18 @@ public class JETPlugin extends JavaPlugin {
         getEventRegistry().register(LoadedAssetsEvent.class, CraftingRecipe.class, JETPlugin::onRecipesLoaded);
         getEventRegistry().register(LoadedAssetsEvent.class, ItemDropList.class, JETPlugin::onDropListsLoaded);
 
+        // Register custom interaction for Pex Glyph item
+        Interaction.CODEC.register("OpenJET", OpenJETInteraction.class, OpenJETInteraction.CODEC);
+
         // Setup O key binding if enabled
         if (config != null && config.bindOKey) {
             setupOKeyBinding();
         }
 
-        getLogger().at(Level.INFO).log("[JET] Plugin enabled - v" + VERSION);
+        log(Level.INFO, "[JET] Plugin enabled - v" + VERSION);
         String keyBindInfo = (config != null && config.bindOKey) ? ", O key bound to /jet" : "";
-        getLogger().at(Level.INFO).log("[JET] Use /jet or /j to open item browser" + keyBindInfo);
-        getLogger().at(Level.INFO).log("[JET] Tip: Use '/jet <itemId>' to search directly (e.g. /jet Block_Stone)");
+        log(Level.INFO, "[JET] Use /jet or /j to open item browser" + keyBindInfo);
+        log(Level.INFO, "[JET] Tip: Use '/jet <itemId>' to search directly (e.g. /jet Block_Stone)");
     }
 
     @Override
@@ -121,13 +162,48 @@ public class JETPlugin extends JavaPlugin {
         if (oKeyFilter != null) {
             PacketAdapters.deregisterInbound(oKeyFilter);
         }
+        // Close JET log writer
+        if (jetLogWriter != null) {
+            jetLogWriter.close();
+        }
+    }
+
+    /**
+     * Setup custom JET logger that writes to UserData/Logs/jet_logs
+     */
+    private void setupJetLogger() {
+        try {
+            Path logsDir = getLogsDirectory();
+            Files.createDirectories(logsDir);
+
+            // Create log file with timestamp
+            String timestamp = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date());
+            Path logFile = logsDir.resolve("jet_" + timestamp + ".log");
+
+            // Open file for appending
+            jetLogWriter = new PrintWriter(new FileWriter(logFile.toFile(), true), true);
+
+        } catch (Exception e) {
+            // Silently fail - can't log if logger setup failed
+        }
+    }
+
+    /**
+     * Log a message to the JET log file only (not to Hytale's main log)
+     */
+    public void log(Level level, String message) {
+        // Write to our JET log file only
+        if (jetLogWriter != null) {
+            String timestamp = logDateFormat.format(new Date());
+            jetLogWriter.println("[" + timestamp + "] [" + level.getName() + "] " + message);
+        }
     }
 
     @SuppressWarnings("unchecked")
     private static void onItemsLoaded(LoadedAssetsEvent<String, Item, DefaultAssetMap<String, Item>> event) {
         ITEMS = ((DefaultAssetMap<String, Item>) event.getAssetMap()).getAssetMap();
         instance.itemRegistry.reload(ITEMS);
-        instance.getLogger().at(Level.INFO).log("[JET] Loaded " + instance.itemRegistry.size() + " items");
+        instance.log(Level.INFO, "[JET] Loaded " + instance.itemRegistry.size() + " items");
     }
 
     @SuppressWarnings("unchecked")
@@ -135,7 +211,7 @@ public class JETPlugin extends JavaPlugin {
         Map<String, CraftingRecipe> recipes = event.getLoadedAssets();
 
         if (recipes == null || recipes.isEmpty()) {
-            instance.getLogger().at(Level.WARNING).log("[JET] No recipes in LoadedAssetsEvent");
+            instance.log(Level.WARNING, "[JET] No recipes in LoadedAssetsEvent");
             return;
         }
 
@@ -176,8 +252,8 @@ public class JETPlugin extends JavaPlugin {
         }
 
         instance.recipeRegistry.reload(recipes);
-        instance.getLogger().at(Level.INFO).log("[JET] Loaded " + instance.recipeRegistry.size() + " recipes");
-        instance.getLogger().at(Level.INFO).log("[JET] Built recipe maps - ITEM_TO_RECIPES: " + ITEM_TO_RECIPES.size() + " items, ITEM_FROM_RECIPES: " + ITEM_FROM_RECIPES.size() + " items");
+        instance.log(Level.INFO, "[JET] Loaded " + instance.recipeRegistry.size() + " recipes");
+        instance.log(Level.INFO, "[JET] Built recipe maps - ITEM_TO_RECIPES: " + ITEM_TO_RECIPES.size() + " items, ITEM_FROM_RECIPES: " + ITEM_FROM_RECIPES.size() + " items");
     }
 
     private static void processRecipeInputs(Object inputsObj, String recipeId) {
@@ -245,34 +321,34 @@ public class JETPlugin extends JavaPlugin {
         Map<String, ItemDropList> dropLists = event.getLoadedAssets();
 
         if (dropLists == null || dropLists.isEmpty()) {
-            instance.getLogger().at(Level.WARNING).log("[JET] No drop lists in LoadedAssetsEvent");
+            instance.log(Level.WARNING, "[JET] No drop lists in LoadedAssetsEvent");
             return;
         }
 
         DROP_LISTS = new HashMap<>(dropLists);
         instance.dropListRegistry.reload(dropLists);
-        instance.getLogger().at(Level.INFO).log("[JET] Loaded " + instance.dropListRegistry.size() + " drop lists");
+        instance.log(Level.INFO, "[JET] Loaded " + instance.dropListRegistry.size() + " drop lists");
     }
 
     // ==================== Config Management ====================
 
     private void loadConfig() {
         try {
-            Path configDir = getFile().getParent().resolve("JET");
+            Path configDir = getJetDataDirectory();
             Files.createDirectories(configDir);
             Path configPath = configDir.resolve(CONFIG_FILE);
 
             if (!Files.exists(configPath)) {
                 config = new JETConfig();
                 saveConfig(configPath);
-                getLogger().at(Level.INFO).log("[JET] Created default config at " + configPath);
+                log(Level.INFO, "[JET] Created default config at " + configPath);
             } else {
                 String json = Files.readString(configPath, StandardCharsets.UTF_8);
                 config = GSON.fromJson(json, JETConfig.class);
-                getLogger().at(Level.INFO).log("[JET] Loaded config from " + configPath);
+                log(Level.INFO, "[JET] Loaded config from " + configPath);
             }
         } catch (Exception e) {
-            getLogger().at(Level.WARNING).log("[JET] Failed to load config, using defaults: " + e.getMessage());
+            log(Level.WARNING, "[JET] Failed to load config, using defaults: " + e.getMessage());
             config = new JETConfig();
         }
     }
@@ -282,7 +358,21 @@ public class JETPlugin extends JavaPlugin {
             String json = GSON.toJson(config);
             Files.writeString(configPath, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            getLogger().at(Level.WARNING).log("[JET] Failed to save config: " + e.getMessage());
+            log(Level.WARNING, "[JET] Failed to save config: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Save the current config to the data directory
+     */
+    public void saveConfig() {
+        try {
+            Path configDir = getJetDataDirectory();
+            Files.createDirectories(configDir);
+            Path configPath = configDir.resolve(CONFIG_FILE);
+            saveConfig(configPath);
+        } catch (IOException e) {
+            log(Level.WARNING, "[JET] Failed to save config: " + e.getMessage());
         }
     }
 
@@ -315,7 +405,7 @@ public class JETPlugin extends JavaPlugin {
             }
         });
 
-        getLogger().at(Level.INFO).log("[JET] O key binding enabled");
+        log(Level.INFO, "[JET] O key binding enabled");
     }
 
     public boolean handleGameModeSwap(PlayerRef playerRef) {

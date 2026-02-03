@@ -9,7 +9,6 @@ import java.io.*;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -28,15 +27,7 @@ public class BrowserStateStorage {
     private volatile long lastSaveTimeMs = 0;
 
     private static Path getDataDirectory() {
-        String os = System.getProperty("os.name").toLowerCase();
-        String userHome = System.getProperty("user.home");
-        if (os.contains("win")) {
-            return Paths.get(userHome, "AppData", "Roaming", "Hytale", "UserData", "JET");
-        } else if (os.contains("mac")) {
-            return Paths.get(userHome, "Library", "Application Support", "Hytale", "UserData", "JET");
-        } else {
-            return Paths.get(userHome, ".local", "share", "Hytale", "UserData", "JET");
-        }
+        return JETPlugin.getJetDataDirectory();
     }
 
     public void load() {
@@ -56,11 +47,11 @@ public class BrowserStateStorage {
                             states.put(UUID.fromString(e.getKey()), e.getValue());
                         } catch (IllegalArgumentException ignored) {}
                     }
-                    JETPlugin.getInstance().getLogger().at(Level.INFO).log("[JET] Loaded browser state for " + states.size() + " players");
+                    JETPlugin.getInstance().log(Level.INFO,"[JET] Loaded browser state for " + states.size() + " players");
                 }
             }
         } catch (Exception e) {
-            JETPlugin.getInstance().getLogger().at(Level.SEVERE).log("[JET] Failed to load browser state: " + e.getMessage());
+            JETPlugin.getInstance().log(Level.SEVERE,"[JET] Failed to load browser state: " + e.getMessage());
         }
     }
 
@@ -77,7 +68,7 @@ public class BrowserStateStorage {
                 GSON.toJson(out, w);
             }
         } catch (Exception e) {
-            JETPlugin.getInstance().getLogger().at(Level.SEVERE).log("[JET] Failed to save browser state: " + e.getMessage());
+            JETPlugin.getInstance().log(Level.SEVERE,"[JET] Failed to save browser state: " + e.getMessage());
         }
     }
 
