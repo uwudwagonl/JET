@@ -14,7 +14,6 @@ import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import dev.hytalemod.jet.JETPlugin;
-import dev.hytalemod.jet.hud.RecipeOverlayManager;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -60,17 +59,6 @@ public class JETPinRecipeCommand extends AbstractCommand {
 
             String recipeId = recipeArg.get(context);
 
-            if (recipeId == null || recipeId.isEmpty()) {
-                // Unpin
-                if (RecipeOverlayManager.getInstance().hasPinnedRecipe(playerRef.getUuid())) {
-                    RecipeOverlayManager.getInstance().unpinRecipe(playerRef);
-                    playerRef.sendMessage(Message.raw("[JET] Recipe unpinned.").color("#55FFFF"));
-                } else {
-                    playerRef.sendMessage(Message.raw("[JET] No recipe pinned. Use /pinrecipe <recipeId> to pin one.").color("#AAAAAA"));
-                    playerRef.sendMessage(Message.raw("[JET] Tip: Find recipe IDs in the JET browser (/jet)").color("#AAAAAA"));
-                }
-                return;
-            }
 
             // Try to find the recipe
             String finalRecipeId = resolveRecipeId(recipeId);
@@ -97,7 +85,6 @@ public class JETPinRecipeCommand extends AbstractCommand {
                 }
             }
 
-            RecipeOverlayManager.getInstance().pinRecipe(playerRef, finalRecipeId);
 
             String displayId = finalRecipeId.contains(":") ? finalRecipeId.substring(finalRecipeId.indexOf(":") + 1) : finalRecipeId;
             playerRef.sendMessage(Message.raw("[JET] Pinned recipe: " + displayId).color("#55FF55"));

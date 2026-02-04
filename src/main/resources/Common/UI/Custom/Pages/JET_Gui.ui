@@ -1,5 +1,11 @@
 $C = "../Common.ui";
+@WhiteText = TextButtonStyle (
+    Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+);
 
+@GreenText = TextButtonStyle (
+    Default: (LabelStyle: (TextColor: #18E314, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+);
 $C.@PageOverlay {
 
   $C.@Container {
@@ -47,43 +53,57 @@ $C.@PageOverlay {
             FlexWeight: 1;
             Anchor: (Height: 36, Right: 5);
             Text: "Tools";
-            Style: $C.@SecondaryTextButtonStyle;
+            Style: TextButtonStyle (
+                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+            );
           }
           TextButton #FilterWeapon {
             FlexWeight: 1;
             Anchor: (Height: 36, Right: 5);
             Text: "Weapons";
-            Style: $C.@SecondaryTextButtonStyle;
+            Style: TextButtonStyle (
+                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+            );
           }
           TextButton #FilterArmor {
             FlexWeight: 1;
             Anchor: (Height: 36, Right: 5);
             Text: "Armor";
-            Style: $C.@SecondaryTextButtonStyle;
+            Style: TextButtonStyle (
+                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+            );
           }
           TextButton #FilterConsumable {
             FlexWeight: 1;
             Anchor: (Height: 36, Right: 5);
             Text: "Consumables";
-            Style: $C.@SecondaryTextButtonStyle;
+            Style: TextButtonStyle (
+                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+            );
           }
           TextButton #FilterBlock {
             FlexWeight: 1;
             Anchor: (Height: 36, Right: 5);
             Text: "Blocks";
-            Style: $C.@SecondaryTextButtonStyle;
+            Style: TextButtonStyle (
+                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+            );
           }
           TextButton #FilterCraftable {
             FlexWeight: 1;
             Anchor: (Height: 36, Right: 5);
             Text: "Craftable";
-            Style: $C.@SecondaryTextButtonStyle;
+            Style: TextButtonStyle (
+                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+            );
           }
           TextButton #FilterNonCraftable {
             FlexWeight: 1;
             Anchor: (Height: 36, Right: 10);
             Text: "Non-Craftable";
-            Style: $C.@SecondaryTextButtonStyle;
+            Style: TextButtonStyle (
+                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+            );
           }
 
           TextButton #ClearFilters {
@@ -298,7 +318,7 @@ $C.@PageOverlay {
               Style: TextButtonStyle (
                 Default: (LabelStyle: (FontSize: 24, TextColor: #888888, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
                 Hovered: (LabelStyle: (FontSize: 24, TextColor: #ffd700, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.8)),
-                Pressed: (LabelStyle: (FontSize: 24i, TextColor: #fa003f, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.9)),
+                Pressed: (LabelStyle: (FontSize: 24, TextColor: #fa003f, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.9)),
                 Sounds: $C.@ButtonSounds
               );
               Background: #2a2a2a(0.6);

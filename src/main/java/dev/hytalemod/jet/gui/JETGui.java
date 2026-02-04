@@ -710,14 +710,15 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         cmd.set("#NextItemPage.Visible", itemPage < totalPages - 1);
 
         // Update filter button text with brackets to show active state
-        cmd.set("#FilterTool.Text", activeFilters.contains(ItemCategory.TOOL) ? "[Tools]" : "Tools");
-        cmd.set("#FilterWeapon.Text", activeFilters.contains(ItemCategory.WEAPON) ? "[Weapons]" : "Weapons");
-        cmd.set("#FilterArmor.Text", activeFilters.contains(ItemCategory.ARMOR) ? "[Armor]" : "Armor");
-        cmd.set("#FilterConsumable.Text", activeFilters.contains(ItemCategory.CONSUMABLE) ? "[Consumables]" : "Consumables");
-        cmd.set("#FilterBlock.Text", activeFilters.contains(ItemCategory.BLOCK) ? "[Blocks]" : "Blocks");
-        cmd.set("#FilterCraftable.Text", activeFilters.contains(ItemCategory.CRAFTABLE) ? "[Craftable]" : "Craftable");
-        cmd.set("#FilterNonCraftable.Text", activeFilters.contains(ItemCategory.NON_CRAFTABLE) ? "[Non-Craftable]" : "Non-Craftable");
+        cmd.set("#FilterTool.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.TOOL) ? "#18E314" : "#FFFFFF");
+        cmd.set("#FilterWeapon.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.WEAPON) ?   "#18E314" : "#FFFFFF");
+        cmd.set("#FilterArmor.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.ARMOR) ?   "#18E314" : "#FFFFFF");
+        cmd.set("#FilterConsumable.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.CONSUMABLE) ?   "#18E314" : "#FFFFFF");
+        cmd.set("#FilterBlock.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.BLOCK) ?   "#18E314" : "#FFFFFF");
+        cmd.set("#FilterCraftable.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.CRAFTABLE) ?   "#18E314" : "#FFFFFF");
+        cmd.set("#FilterNonCraftable.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.NON_CRAFTABLE) ?   "#18E314" : "#FFFFFF");
     }
+
 
     private Comparator<Map.Entry<String, Item>> getSortComparator() {
         String language = playerRef.getLanguage();
