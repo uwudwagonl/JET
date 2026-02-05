@@ -53,24 +53,14 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Gui.ui");
 
-        // Hide search bar, filters, sorting controls, and other UI elements
-        cmd.set("#SearchInput.Visible", false);
-        cmd.set("#ShowHiddenItems.Visible", false);
-        cmd.set("#ShowSalvager.Visible", false);
-        cmd.set("#GridLayout.Visible", false);
-        cmd.set("#PrevItemPage.Visible", false);
-        cmd.set("#NextItemPage.Visible", false);
-        cmd.set("#ItemPageInfo.Visible", false);
-        cmd.set("#ClearFilters.Visible", false);
+        JETPlugin.getInstance().log(java.util.logging.Level.INFO, "[JET] Opening Pinned Items GUI for " + playerRef.getUuid());
 
-        // Hide all filter buttons
-        cmd.set("#FilterTool.Visible", false);
-        cmd.set("#FilterWeapon.Visible", false);
-        cmd.set("#FilterArmor.Visible", false);
-        cmd.set("#FilterConsumable.Visible", false);
-        cmd.set("#FilterBlock.Visible", false);
-        cmd.set("#FilterCraftable.Visible", false);
-        cmd.set("#FilterNonCraftable.Visible", false);
+        cmd.set("#SearchHint.Visible", false);
+        cmd.set("#SearchInput.Visible", false);
+        cmd.set("#FilterSection.Visible", false);
+        cmd.set("#OptionsBar.Visible", false);
+        cmd.set("#ItemPagination.Visible", false);
+        cmd.set("#HistoryBar.Visible", false);
 
         // Toggle mode button - switches to craft mode
         events.addEventBinding(

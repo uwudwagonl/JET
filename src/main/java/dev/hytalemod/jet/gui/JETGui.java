@@ -464,13 +464,11 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             UICommandBuilder cmd = new UICommandBuilder();
             UIEventBuilder events = new UIEventBuilder();
 
-            // Only rebuild item list if not viewing a recipe (to prevent overlap)
-            if (needsItemUpdate && (selectedItem == null || selectedItem.isEmpty())) {
+            if (needsItemUpdate) {
                 buildItemList(ref, cmd, events, store);
             }
             if (needsRecipeUpdate) {
                 buildRecipePanel(ref, cmd, events, store);
-                // Also update history bar since selecting items adds to history
                 buildHistoryBar(cmd, events);
             }
 
@@ -1402,6 +1400,11 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         return result.toString();
     }
 
+    private String stripColorTags(String text) {
+        if (text == null) return "";
+        return text.replaceAll("<color[^>]*>", "").replaceAll("</color>", "");
+    }
+
     private String getDisplayName(Item item, String language) {
         if (item == null) return "Unknown";
         try {
@@ -1493,12 +1496,15 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         Message coloredName = getColoredItemName(item, getDisplayName(item, language));
         tooltip.append(coloredName.bold(true)).nl();
 
-        // Description with space
         try {
             String descKey = item.getDescriptionTranslationKey();
             if (descKey != null && !descKey.isEmpty()) {
                 String description = I18nModule.get().getMessage(language, descKey);
                 if (description != null && !description.isEmpty()) {
+                    description = stripColorTags(description);
+                    if (description.length() > 150) {
+                        description = description.substring(0, 147) + "...";
+                    }
                     tooltip.nl();
                     tooltip.append(description, "#aaaaaa");
                     tooltip.nl();

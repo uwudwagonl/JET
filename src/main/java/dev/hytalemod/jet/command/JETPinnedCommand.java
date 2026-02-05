@@ -55,7 +55,7 @@ public class JETPinnedCommand extends AbstractCommand {
                 Set<String> pinnedItems = JETPlugin.getInstance().getPinnedItemsStorage().getPinnedItems(playerRef.getUuid());
 
                 if (pinnedItems.isEmpty()) {
-                    player.sendMessage(Message.raw("§eNo pinned items yet! Use §6/jet§e to browse items and pin your favorites."));
+                    player.sendMessage(Message.raw("No pinned items yet! Use /jet to browse items and pin your favorites.").color("#ffaa00"));
                     return;
                 }
 

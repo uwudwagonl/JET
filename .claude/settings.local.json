@@ -42,7 +42,11 @@
       "Bash(\"/c/Program Files/Java/jdk-25/bin/javap\" -c -p \"C:/Users/benja/OneDrive/Desktop/hytale/JET/libs/hytale-server.jar\")",
       "Bash(identify:*)",
       "Bash(python3:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(wc:*)",
+      "WebFetch(domain:hytale.com)",
+      "WebFetch(domain:hytale-docs.com)",
+      "WebFetch(domain:www.thegamer.com)"
     ]
   }
 }
