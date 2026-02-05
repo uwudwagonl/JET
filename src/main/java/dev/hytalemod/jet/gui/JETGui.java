@@ -38,6 +38,7 @@ import com.hypixel.hytale.server.core.entity.entities.Player;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.LinkedList;
+import java.util.logging.Level;
 
 /**
  * JET Browser GUI with item browsing, recipes, and uses.
@@ -458,6 +459,28 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.activeSection = "craft";
             addToHistory(data.historyItemClick);
             needsRecipeUpdate = true;
+        }
+
+        // Handle opening drop source (MobInfoGui)
+        if (data.openDropSource != null && !data.openDropSource.isEmpty()) {
+            JETPlugin.getInstance().log(Level.INFO, "[JET] Opening MobInfoGui for drop source: " + data.openDropSource);
+
+            BrowserState currentState = captureState();
+            close();
+
+            MobInfoGui mobInfoGui = new MobInfoGui(
+                    playerRef,
+                    CustomPageLifetime.CanDismiss,
+                    data.openDropSource,
+                    this.selectedItem,
+                    currentState
+            );
+
+            com.hypixel.hytale.server.core.entity.entities.Player player = store.getComponent(ref, com.hypixel.hytale.server.core.entity.entities.Player.getComponentType());
+            if (player != null) {
+                player.getPageManager().openCustomPage(ref, store, mobInfoGui);
+            }
+            return;
         }
 
         if (needsItemUpdate || needsRecipeUpdate) {
@@ -1133,21 +1156,34 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             String dropListId = dropListIds.get(i);
             int idx = i - start;
 
-            // Use the recipe entry UI as a template
-            cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
-            String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
-
             // Format the drop list ID for display
             String displayName = formatDropListName(dropListId);
             String dropType = getDropType(dropListId);
-
-            // Set the title WITHOUT emoji icon
             String fullDropTitle = displayName + " (" + dropType + ")";
-            cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(fullDropTitle));
 
-            // Hide both input and output sections for now
-            cmd.set(rSel + "[1].Visible", false);  // Hide Input group
-            cmd.set(rSel + "[2].Visible", false);  // Hide Output group
+            // Use a Button wrapper so it can receive click events
+            cmd.appendInline("#RecipePanel #RecipeListContainer #RecipeList",
+                    "Button #DropEntry" + idx + " { " +
+                    "LayoutMode: Top; " +
+                    "Padding: (Full: 10, Bottom: 12); " +
+                    "Background: (Color: #1e1e1e(0.9)); " +
+                    "Anchor: (Bottom: 8); " +
+                    "Style: (Hovered: (Background: #2a2a2a), Pressed: (Background: #3a3a3a)); " +
+                    "Label #DropTitle { Style: (FontSize: 13, RenderBold: true, TextColor: #ffcc66); } " +
+                    "Label #DropHint { Style: (FontSize: 11, TextColor: #888888); Padding: (Top: 4); } " +
+                    "}");
+
+            String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
+            cmd.set(rSel + " #DropTitle.Text", fullDropTitle);
+            cmd.set(rSel + " #DropHint.Text", "Click to view loot table");
+
+            // Add click event to open MobInfoGui for this drop source
+            events.addEventBinding(
+                    CustomUIEventBindingType.Activating,
+                    rSel,
+                    EventData.of("OpenDropSource", dropListId),
+                    false
+            );
         }
     }
 
@@ -1842,6 +1878,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("ToggleHistory", Codec.STRING), (d, v) -> d.toggleHistory = v, d -> d.toggleHistory)
                 .addField(new KeyedCodec<>("ClearHistory", Codec.STRING), (d, v) -> d.clearHistory = v, d -> d.clearHistory)
                 .addField(new KeyedCodec<>("HistoryItemClick", Codec.STRING), (d, v) -> d.historyItemClick = v, d -> d.historyItemClick)
+                .addField(new KeyedCodec<>("OpenDropSource", Codec.STRING), (d, v) -> d.openDropSource = v, d -> d.openDropSource)
                 .build();
 
         private String searchQuery;
@@ -1863,6 +1900,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         private String toggleHistory;
         private String clearHistory;
         private String historyItemClick;
+        private String openDropSource;
 
         public GuiData() {}
     }

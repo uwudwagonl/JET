@@ -46,7 +46,20 @@
       "Bash(wc:*)",
       "WebFetch(domain:hytale.com)",
       "WebFetch(domain:hytale-docs.com)",
-      "WebFetch(domain:www.thegamer.com)"
+      "WebFetch(domain:www.thegamer.com)",
+      "Bash(gradlew build:*)",
+      "Bash(xargs:*)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\benja\\\\AppData\\\\Roaming\\\\Hytale\\\\install\\\\release\\\\package\\\\game\\\\latest\\\\Client\\\\Data\" -Recurse -Directory)",
+      "Bash(Where-Object { $_Name -match \"creature|npc|mob|entity|prefab\" })",
+      "Bash(Select-Object -First 30 -ExpandProperty FullName)",
+      "Bash(.gradlew build:*)",
+      "Bash(gradlew.bat build:*)",
+      "Bash(cmd.exe:*)",
+      "Bash(powershell.exe -Command:*)",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Set-Location ''C:\\\\Users\\\\benja\\\\OneDrive\\\\Desktop\\\\hytale\\\\JET''; .\\\\gradlew.bat build 2>&1\")",
+      "Bash(/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe:*)",
+      "Bash(/mnt/c/Windows/System32/cmd.exe /c \"cd /d C:\\\\Users\\\\benja\\\\OneDrive\\\\Desktop\\\\hytale\\\\JET && gradlew.bat build\")",
+      "Bash(/c/Windows/System32/cmd.exe:*)"
     ]
   }
 }

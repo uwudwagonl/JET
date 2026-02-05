@@ -1,0 +1,213 @@
+$C = "../Common.ui";
+
+$C.@PageOverlay {
+  $C.@Container {
+    Anchor: (Width: 900, Height: 550);
+
+    #Title {
+      LayoutMode: Left;
+      Padding: (Full: 10);
+
+      // Back button
+      Button #BackButton {
+        Anchor: (Width: 80, Height: 30);
+        Background: (Color: #2a2a2a(0.9));
+        Style: (Hovered: (Background: #3a3a3a), Pressed: (Background: #4a4a4a));
+
+        Label {
+          Text: "< Back";
+          Style: (
+            FontSize: 12,
+            RenderBold: true,
+            TextColor: #ffffff,
+            HorizontalAlignment: Center,
+            VerticalAlignment: Center
+          );
+        }
+      }
+
+      // Title section
+      Group {
+        LayoutMode: Top;
+        Padding: (Left: 15);
+        FlexWeight: 1;
+
+        Label #MobName {
+          Style: (
+            FontSize: 22,
+            RenderBold: true,
+            TextColor: #ffffff
+          );
+        }
+
+        Label #MobCategory {
+          Style: (
+            FontSize: 11,
+            TextColor: #888888
+          );
+          Padding: (Top: 2);
+        }
+      }
+    }
+
+    #Content {
+      LayoutMode: Left;
+      Padding: (Full: 10);
+
+      // Left side - Model preview area
+      Group #ModelSection {
+        Anchor: (Width: 280);
+        LayoutMode: Top;
+        Padding: (Right: 10);
+
+        Group #ModelContainer {
+          Anchor: (Height: 280);
+          LayoutMode: Top;
+
+          // Creature icon preview
+          Group #CreaturePreview {
+            Anchor: (Height: 180);
+            LayoutMode: Middle;
+
+            // Container for creature image - content will be appended dynamically
+            Group #CreatureIconContainer {
+              Anchor: (Width: 160, Height: 160);
+              Background: (Color: #0a0a0a(0.6));
+              LayoutMode: Middle;
+            }
+          }
+
+          // Representative items row - show what this source drops
+          Group #DropsPreviewSection {
+            LayoutMode: Top;
+            Padding: (Top: 8);
+
+            Label {
+              Text: "Representative Drops";
+              Style: (FontSize: 10, TextColor: #666666, HorizontalAlignment: Center);
+              Anchor: (Height: 16);
+            }
+
+            Group #DropsPreview {
+              LayoutMode: Left;
+              Anchor: (Height: 60);
+              Padding: (Top: 4);
+
+              Group { FlexWeight: 1; }
+              ItemIcon #PreviewIcon0 { Anchor: (Width: 48, Height: 48); Visible: false; }
+              ItemIcon #PreviewIcon1 { Anchor: (Width: 48, Height: 48, Left: 8); Visible: false; }
+              ItemIcon #PreviewIcon2 { Anchor: (Width: 48, Height: 48, Left: 8); Visible: false; }
+              ItemIcon #PreviewIcon3 { Anchor: (Width: 48, Height: 48, Left: 8); Visible: false; }
+              Group { FlexWeight: 1; }
+            }
+          }
+        }
+
+        // Mob stats section
+        Group #StatsContainer {
+          LayoutMode: Top;
+          Padding: (Top: 10);
+          FlexWeight: 1;
+
+          Label {
+            Text: "Drop Source Info";
+            Style: (
+              FontSize: 14,
+              RenderBold: true,
+              TextColor: #ffcc66
+            );
+            Padding: (Bottom: 8);
+          }
+
+          Group #StatsList {
+            LayoutMode: Top;
+            Background: (Color: #1a1a1a(0.5));
+            Padding: (Full: 8);
+
+            Group {
+              LayoutMode: Left;
+              Anchor: (Height: 22);
+              Label { Text: "Type:"; Style: (FontSize: 11, TextColor: #888888); Anchor: (Width: 70); }
+              Label #StatType { Style: (FontSize: 11, TextColor: #ffffff); FlexWeight: 1; }
+            }
+
+            Group {
+              LayoutMode: Left;
+              Anchor: (Height: 22);
+              Label { Text: "Source ID:"; Style: (FontSize: 11, TextColor: #888888); Anchor: (Width: 70); }
+              Label #StatSourceId { Style: (FontSize: 9, TextColor: #aaaaaa); FlexWeight: 1; }
+            }
+
+            Group {
+              LayoutMode: Left;
+              Anchor: (Height: 22);
+              Label { Text: "Total Drops:"; Style: (FontSize: 11, TextColor: #888888); Anchor: (Width: 70); }
+              Label #StatTotalDrops { Style: (FontSize: 11, TextColor: #ffffff); FlexWeight: 1; }
+            }
+          }
+        }
+      }
+
+      // Right side - Loot table
+      Group #DropSection {
+        LayoutMode: Top;
+        FlexWeight: 1;
+
+        Group #DropHeader {
+          LayoutMode: Left;
+          Padding: (Bottom: 8);
+          Anchor: (Height: 25);
+
+          Label {
+            Text: "Loot Table";
+            Style: (
+              FontSize: 16,
+              RenderBold: true,
+              TextColor: #ffcc66
+            );
+          }
+
+          Group {
+            FlexWeight: 1;
+          }
+
+          Label #DropCount {
+            Style: (
+              FontSize: 11,
+              TextColor: #888888
+            );
+          }
+        }
+
+        Group #DropListContainer {
+          FlexWeight: 1;
+          LayoutMode: TopScrolling;
+          ScrollbarStyle: $C.@DefaultScrollbarStyle;
+          Background: (Color: #0a0a0a(0.5));
+          Padding: (Full: 5);
+
+          Group #DropList {
+            LayoutMode: Top;
+          }
+        }
+
+        Group #Footer {
+          LayoutMode: Left;
+          Padding: (Top: 8);
+          Anchor: (Height: 25);
+
+          Label {
+            Text: "Click an item to view its recipes";
+            Style: (
+              FontSize: 10,
+              TextColor: #666666,
+              HorizontalAlignment: Center,
+              VerticalAlignment: Center
+            );
+            FlexWeight: 1;
+          }
+        }
+      }
+    }
+  }
+}
