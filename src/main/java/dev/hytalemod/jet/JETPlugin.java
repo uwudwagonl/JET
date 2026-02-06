@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.hypixel.hytale.assetstore.event.LoadedAssetsEvent;
 import com.hypixel.hytale.assetstore.map.DefaultAssetMap;
+import com.hypixel.hytale.component.ComponentType;
 import com.hypixel.hytale.server.core.asset.type.item.config.CraftingRecipe;
 import com.hypixel.hytale.server.core.asset.type.item.config.Item;
 import com.hypixel.hytale.server.core.asset.type.item.config.ItemDropList;
@@ -17,10 +18,9 @@ import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.protocol.GameMode;
 import com.hypixel.hytale.server.core.modules.interaction.interaction.config.Interaction;
-import dev.hytalemod.jet.command.JETBindCommand;
-import dev.hytalemod.jet.command.JETCommand;
-import dev.hytalemod.jet.command.JETPinnedCommand;
-import dev.hytalemod.jet.command.JETSettingsCommand;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import dev.hytalemod.jet.command.*;
+import dev.hytalemod.jet.component.RecipeHudComponent;
 import dev.hytalemod.jet.config.JETConfig;
 import dev.hytalemod.jet.interaction.OpenJETInteraction;
 import dev.hytalemod.jet.filter.OKeyPacketFilter;
@@ -78,6 +78,9 @@ public class JETPlugin extends JavaPlugin {
     private PrintWriter jetLogWriter;
     private final SimpleDateFormat logDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
+    private ComponentType<EntityStore, RecipeHudComponent> recipeHudComponentType;
+
+
     public JETPlugin(JavaPluginInit init) {
         super(init);
     }
@@ -117,6 +120,12 @@ public class JETPlugin extends JavaPlugin {
         super.setup();
 
         instance = this;
+        recipeHudComponentType = getEntityStoreRegistry().registerComponent(
+                RecipeHudComponent.class,
+                "jet:recipe_hud",
+                RecipeHudComponent.CODEC
+        );
+        RecipeHudComponent.init(recipeHudComponentType);
 
         // Setup custom JET logger that writes to UserData/Logs/jet_logs
         setupJetLogger();
@@ -136,7 +145,7 @@ public class JETPlugin extends JavaPlugin {
         getCommandRegistry().registerCommand(new JETPinnedCommand());
         getCommandRegistry().registerCommand(new JETSettingsCommand());
         getCommandRegistry().registerCommand(new JETBindCommand());
-
+        getCommandRegistry().registerCommand(new JETRecipeHudCommand());
         // Register asset load events
         getEventRegistry().register(LoadedAssetsEvent.class, Item.class, JETPlugin::onItemsLoaded);
         getEventRegistry().register(LoadedAssetsEvent.class, CraftingRecipe.class, JETPlugin::onRecipesLoaded);
@@ -154,6 +163,8 @@ public class JETPlugin extends JavaPlugin {
         String keyBindInfo = (config != null && config.bindOKey) ? ", O key bound to /jet" : "";
         log(Level.INFO, "[JET] Use /jet or /j to open item browser" + keyBindInfo);
         log(Level.INFO, "[JET] Tip: Use '/jet <itemId>' to search directly (e.g. /jet Block_Stone)");
+
+
     }
 
     @Override
@@ -478,5 +489,8 @@ public class JETPlugin extends JavaPlugin {
 
         lastTriggerTime.put(playerRef.getUuid(), now);
         return false;
+    }
+    public ComponentType<EntityStore, RecipeHudComponent> getRecipeHudComponentType() {
+        return recipeHudComponentType;
     }
 }

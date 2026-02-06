@@ -447,6 +447,17 @@ $C.@PageOverlay {
             Padding: (Full: 8);
           }
         }
+        TextButton #PinToHudButton {
+          Anchor: (Width: 90, Height: 30);
+          Text: "[HUD]";
+          Style: TextButtonStyle (
+            Default: (LabelStyle: (TextColor: #888888, RenderBold: true)),
+            Hovered: (LabelStyle: (TextColor: #55aaff), Background: #3a3a3a(0.8)),
+            Pressed: (Background: #3a3a3a(0.9)),
+            Sounds: $C.@ButtonSounds
+          );
+          Background: #2a2a2a(0.6);
+        }
       }
     }
   }

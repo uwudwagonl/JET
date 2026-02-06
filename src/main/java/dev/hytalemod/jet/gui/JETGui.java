@@ -27,6 +27,8 @@ import com.hypixel.hytale.server.core.asset.type.item.config.ItemQuality;
 import com.hypixel.hytale.server.core.asset.AssetModule;
 import com.hypixel.hytale.protocol.Color;
 import dev.hytalemod.jet.JETPlugin;
+import dev.hytalemod.jet.component.RecipeHudComponent;
+import dev.hytalemod.jet.hud.HudUtil;
 import dev.hytalemod.jet.model.ItemCategory;
 import dev.hytalemod.jet.util.TooltipBuilder;
 import dev.hytalemod.jet.storage.BrowserState;
@@ -498,6 +500,26 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             sendUpdate(cmd, events, false);
         }
 
+        if (data.pinToHud != null && "toggle".equals(data.pinToHud) && this.selectedItem != null) {
+            // Get the first crafting recipe for this item to pin to HUD
+            List<String> recipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(this.selectedItem, Collections.emptyList());
+            if (!recipeIds.isEmpty()) {
+                String recipeId = recipeIds.get(0); // Pin first recipe
+
+                RecipeHudComponent component = store.ensureAndGetComponent(ref, RecipeHudComponent.getComponentType());
+                component.toggleRecipe(recipeId);
+
+                if (component.hasRecipe(recipeId)) {
+                    playerRef.sendMessage(Message.raw("§a[JET] Pinned recipe to HUD"));
+                } else {
+                    playerRef.sendMessage(Message.raw("§e[JET] Unpinned recipe from HUD"));
+                }
+
+                // Update HUD
+                HudUtil.updateHud(ref);
+                needsRecipeUpdate = true;
+            }
+        }
         maybeSaveState();
     }
 
@@ -1047,6 +1069,12 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         } else {
             buildDropsSection(ref, cmd, events, dropSources);
         }
+        events.addEventBinding(
+                CustomUIEventBindingType.Activating,
+                "#RecipePanel #PinToHudButton",
+                EventData.of("PinToHud", "toggle"),
+                false
+        );
     }
 
     private void buildCraftSection(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, List<String> recipeIds) {
@@ -1857,6 +1885,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     }
 
     public static class GuiData {
+        private String pinToHud;
         public static final BuilderCodec<GuiData> CODEC = BuilderCodec
                 .builder(GuiData.class, GuiData::new)
                 .addField(new KeyedCodec<>("@SearchQuery", Codec.STRING), (d, v) -> d.searchQuery = v, d -> d.searchQuery)
@@ -1879,6 +1908,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("ClearHistory", Codec.STRING), (d, v) -> d.clearHistory = v, d -> d.clearHistory)
                 .addField(new KeyedCodec<>("HistoryItemClick", Codec.STRING), (d, v) -> d.historyItemClick = v, d -> d.historyItemClick)
                 .addField(new KeyedCodec<>("OpenDropSource", Codec.STRING), (d, v) -> d.openDropSource = v, d -> d.openDropSource)
+                .addField(new KeyedCodec<>("PinToHud", Codec.STRING), (d, v) -> d.pinToHud = v, d -> d.pinToHud)
                 .build();
 
         private String searchQuery;

@@ -1,0 +1,24 @@
+$C = "../Common.ui";
+
+Group {
+  LayoutMode: Left;
+
+  AssetImage #ResourceIcon {
+    Visible: false;
+    Anchor: (Width: 28, Height: 28);
+  }
+
+  ItemIcon #ItemIcon {
+    Visible: false;
+    Anchor: (Width: 28, Height: 28);
+  }
+
+  Label #ItemName {
+    Padding: (Left: 4);
+    Style: (
+      Alignment: Center,
+      FontSize: 18,
+      TextColor: #dddddd,
+    );
+  }
+}
