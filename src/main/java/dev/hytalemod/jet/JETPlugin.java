@@ -9,6 +9,7 @@ import com.hypixel.hytale.server.core.asset.type.item.config.CraftingRecipe;
 import com.hypixel.hytale.server.core.asset.type.item.config.Item;
 import com.hypixel.hytale.server.core.asset.type.item.config.ItemDropList;
 import com.hypixel.hytale.server.core.event.events.ecs.ChangeGameModeEvent;
+import com.hypixel.hytale.server.core.event.events.entity.LivingEntityInventoryChangeEvent;
 import com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent;
 import com.hypixel.hytale.server.core.inventory.MaterialQuantity;
 import com.hypixel.hytale.server.core.io.adapter.PacketAdapters;
@@ -30,6 +31,7 @@ import dev.hytalemod.jet.registry.ItemRegistry;
 import dev.hytalemod.jet.registry.RecipeRegistry;
 import dev.hytalemod.jet.storage.BrowserStateStorage;
 import dev.hytalemod.jet.storage.PinnedItemsStorage;
+import dev.hytalemod.jet.system.RecipeHudUpdateSystem;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -150,6 +152,7 @@ public class JETPlugin extends JavaPlugin {
         getEventRegistry().register(LoadedAssetsEvent.class, Item.class, JETPlugin::onItemsLoaded);
         getEventRegistry().register(LoadedAssetsEvent.class, CraftingRecipe.class, JETPlugin::onRecipesLoaded);
         getEventRegistry().register(LoadedAssetsEvent.class, ItemDropList.class, JETPlugin::onDropListsLoaded);
+        getEventRegistry().registerGlobal(LivingEntityInventoryChangeEvent.class, RecipeHudUpdateSystem::onInventoryChange);
 
         // Register custom interaction for Pex Glyph item
         Interaction.CODEC.register("OpenJET", OpenJETInteraction.class, OpenJETInteraction.CODEC);
@@ -166,6 +169,7 @@ public class JETPlugin extends JavaPlugin {
 
 
     }
+
 
     @Override
     protected void shutdown() {
