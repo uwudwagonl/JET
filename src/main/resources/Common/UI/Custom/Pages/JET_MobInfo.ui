@@ -69,11 +69,17 @@ $C.@PageOverlay {
             Anchor: (Height: 180);
             LayoutMode: Middle;
 
-            // Container for creature image - content will be appended dynamically
+            // Container for creature image
             Group #CreatureIconContainer {
               Anchor: (Width: 160, Height: 160);
               Background: (Color: #0a0a0a(0.6));
               LayoutMode: Middle;
+
+              // Creature icon - ItemId set dynamically to JET_Creature_{name}
+              ItemIcon #CreatureIcon {
+                Anchor: (Width: 128, Height: 128);
+                Visible: true;
+              }
             }
           }
 

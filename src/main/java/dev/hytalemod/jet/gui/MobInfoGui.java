@@ -70,23 +70,13 @@ public class MobInfoGui extends InteractiveCustomUIPage<MobInfoGui.GuiData> {
     }
 
     private void buildModelSection(UICommandBuilder cmd, String mobName, String mobCategory) {
-        // Try to find a creature icon for this drop source
         String creatureName = extractCreatureName(dropListId);
-        String iconPath = getCreatureIconPath(creatureName);
 
-        // Clear any existing content in the container
-        cmd.clear("#Content #CreatureIconContainer");
-
-        // WIP: Model preview - for now show category colored placeholder
-        String bgColor = getCategoryBackgroundColor(mobCategory);
-        cmd.appendInline("#Content #CreatureIconContainer",
-            "Group { Anchor: (Width: 128, Height: 128); Background: (Color: " + bgColor + "); LayoutMode: Top; " +
-            "Label { Style: (FontSize: 12, TextColor: #ffffff80, HorizontalAlignment: Center); Padding: (Top: 10); } " +
-            "Label { Style: (FontSize: 16, TextColor: #ffffff, HorizontalAlignment: Center, VerticalAlignment: Center, RenderBold: true); Padding: (Top: 30); } " +
-            "Label { Style: (FontSize: 10, TextColor: #ffffff60, HorizontalAlignment: Center); Padding: (Top: 70); } }");
-        cmd.set("#Content #CreatureIconContainer[0][0].Text", "WIP");
-        cmd.set("#Content #CreatureIconContainer[0][1].Text", mobCategory);
-        cmd.set("#Content #CreatureIconContainer[0][2].Text", "Model Preview");
+        // Show creature icon using ItemIcon
+        String creatureItemId = "JET_Creature_" + creatureName;
+        JETPlugin.getInstance().log(Level.INFO, "[JET] MobInfo creature icon: " + creatureName + " -> " + creatureItemId);
+        // TEST: Use JET_PexGlyph to see if any mod item renders here
+        cmd.set("#Content #CreatureIconContainer #CreatureIcon.ItemId", "JET_PexGlyph");
 
         // Show representative drops (up to 4 unique items)
         List<String> previewItems = getPreviewItems();
@@ -133,22 +123,6 @@ public class MobInfoGui extends InteractiveCustomUIPage<MobInfoGui.GuiData> {
         }
 
         return name;
-    }
-
-    private String getCreatureIconPath(String creatureName) {
-        if (creatureName == null || creatureName.isEmpty()) return null;
-
-        // The icons are stored in Common/Icons/Creatures/ relative to the UI file
-        // UI file is at: Common/UI/Custom/Pages/JET_MobInfo.ui
-        // Icons are at: Common/Icons/Creatures/
-        // Relative path: ../../../Icons/Creatures/
-
-        // Try exact match first
-        String relativePath = "../../../Icons/Creatures/" + creatureName + ".png";
-
-        // We can't check if the file exists at runtime easily, so we'll just return the path
-        // and let the UI system handle missing textures gracefully
-        return relativePath;
     }
 
     private List<String> getPreviewItems() {
