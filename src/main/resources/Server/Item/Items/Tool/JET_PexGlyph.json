@@ -23,5 +23,14 @@
 				}
 			]
 		}
+	},
+	"Recipe" : {
+		"Input": [
+			{
+				"ItemId": "Block_Stone",
+				"Quantity": 4
+			}
+		],
+		"BenchRequirement" : []
 	}
 }

@@ -5,6 +5,7 @@ import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import dev.hytalemod.jet.system.InventoryTrackingSystem;
 
 /**
  * Utility for managing recipe HUD updates
@@ -30,4 +31,13 @@ public class HudUtil {
         // Update the HUD
         player.getHudManager().setCustomHud(playerRef, new RecipeHud(playerRef));
     }
+
+    /**
+     * Update HUD and force inventory check
+     */
+    public static void updateHudWithInventoryRefresh(Ref<EntityStore> ref) {
+        updateHud(ref);
+        InventoryTrackingSystem.forceUpdate(ref);
+    }
+    Item
 }
