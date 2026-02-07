@@ -1,9 +1,0 @@
-{
-	"Input": [
-		{"ItemId": "Block_Stone", "Quantity": 4}
-	],
-	"PrimaryOutput": {"ItemId": "JET:Tool_JET_PexGlyph", "Quantity": 1},
-	"BenchRequirement": [],
-	"TimeSeconds": 0.5,
-	"KnowledgeRequired": false
-}
