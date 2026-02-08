@@ -28,6 +28,7 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
     private boolean bindOKey;
     private boolean appliesOnOP;
     private int cooldownMs;
+    private boolean enableGiveButtons;
 
     public JETSettingsGui(PlayerRef playerRef, JETPlugin plugin) {
         super(playerRef, CustomPageLifetime.CanDismiss, SettingsData.CODEC);
@@ -38,6 +39,7 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
         this.bindOKey = config.bindOKey;
         this.appliesOnOP = config.appliesOnOP;
         this.cooldownMs = config.cooldownMs;
+        this.enableGiveButtons = config.enableGiveButtons;
     }
 
     @Override
@@ -72,6 +74,13 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
             "      Anchor: (Bottom: 10); " +
             "      CheckBox #AppliesOnOPCheck { Anchor: (Width: 24, Height: 24, Right: 10); } " +
             "      Label #AppliesOnOPLabel { Style: (FontSize: 16, TextColor: #ffffff); } " +
+            "    } " +
+            "    " +
+            "    Group #GiveButtonsSetting { " +
+            "      LayoutMode: Left; " +
+            "      Anchor: (Bottom: 10); " +
+            "      CheckBox #GiveButtonsCheck { Anchor: (Width: 24, Height: 24, Right: 10); } " +
+            "      Label #GiveButtonsLabel { Style: (FontSize: 16, TextColor: #ffffff); } " +
             "    } " +
             "  } " +
             "  " +
@@ -109,10 +118,12 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
         // Set checkbox labels
         cmd.set("#BindOKeyLabel.TextSpans", Message.raw("Bind O key to open JET"));
         cmd.set("#AppliesOnOPLabel.TextSpans", Message.raw("Apply O key binding to OPs"));
+        cmd.set("#GiveButtonsLabel.TextSpans", Message.raw("Enable Give Item buttons (Creative/OP)"));
 
         // Set checkbox values
         cmd.set("#BindOKeyCheck.Value", bindOKey);
         cmd.set("#AppliesOnOPCheck.Value", appliesOnOP);
+        cmd.set("#GiveButtonsCheck.Value", enableGiveButtons);
 
         // Event bindings
         events.addEventBinding(
@@ -126,6 +137,13 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
             CustomUIEventBindingType.ValueChanged,
             "#AppliesOnOPCheck",
             EventData.of("@AppliesOnOP", "#AppliesOnOPCheck.Value"),
+            false
+        );
+
+        events.addEventBinding(
+            CustomUIEventBindingType.ValueChanged,
+            "#GiveButtonsCheck",
+            EventData.of("@EnableGiveButtons", "#GiveButtonsCheck.Value"),
             false
         );
 
@@ -157,6 +175,10 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
             this.appliesOnOP = data.appliesOnOP;
         }
 
+        if (data.enableGiveButtons != null) {
+            this.enableGiveButtons = data.enableGiveButtons;
+        }
+
         // Handle button actions
         if (data.action != null) {
             if ("save".equals(data.action)) {
@@ -175,8 +197,10 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
         config.bindOKey = this.bindOKey;
         config.appliesOnOP = this.appliesOnOP;
         config.cooldownMs = this.cooldownMs;
+        config.enableGiveButtons = this.enableGiveButtons;
 
         // Save config file
+        plugin.saveConfig();
         try {
             plugin.log(Level.INFO, "[JET] Settings saved by " + playerRef.getUsername());
             if (needsRestart) {
@@ -194,11 +218,13 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
                 .builder(SettingsData.class, SettingsData::new)
                 .addField(new KeyedCodec<>("@BindOKey", Codec.BOOLEAN), (d, v) -> d.bindOKey = v, d -> d.bindOKey)
                 .addField(new KeyedCodec<>("@AppliesOnOP", Codec.BOOLEAN), (d, v) -> d.appliesOnOP = v, d -> d.appliesOnOP)
+                .addField(new KeyedCodec<>("@EnableGiveButtons", Codec.BOOLEAN), (d, v) -> d.enableGiveButtons = v, d -> d.enableGiveButtons)
                 .addField(new KeyedCodec<>("Action", Codec.STRING), (d, v) -> d.action = v, d -> d.action)
                 .build();
 
         private Boolean bindOKey;
         private Boolean appliesOnOP;
+        private Boolean enableGiveButtons;
         private String action;
 
         public SettingsData() {}

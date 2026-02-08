@@ -9,6 +9,9 @@ public class JETConfig {
     public boolean appliesOnOP = false;
     public int cooldownMs = 250;
 
+    // Give buttons (Creative/OP only) - off by default
+    public boolean enableGiveButtons = false;
+
     // Default constructor with sensible defaults
     public JETConfig() {
     }

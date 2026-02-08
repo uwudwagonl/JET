@@ -375,13 +375,13 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             needsRecipeUpdate = true;
         }
 
-        // Handle give item
-        if (data.giveItem != null && !data.giveItem.isEmpty()) {
+        // Handle give item (only if config enabled)
+        if (JETPlugin.getInstance().getConfig().enableGiveButtons && data.giveItem != null && !data.giveItem.isEmpty()) {
             giveItemToPlayer(ref, store, data.giveItem, false);
         }
 
-        // Handle give item stack
-        if (data.giveItemStack != null && !data.giveItemStack.isEmpty()) {
+        // Handle give item stack (only if config enabled)
+        if (JETPlugin.getInstance().getConfig().enableGiveButtons && data.giveItemStack != null && !data.giveItemStack.isEmpty()) {
             giveItemToPlayer(ref, store, data.giveItemStack, true);
         }
 
@@ -1038,10 +1038,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         String recipeInfo = "Craft: " + craftRecipeIds.size() + " | Uses: " + usageRecipeIds.size() + " | Drops: " + dropSources.size();
         cmd.set("#RecipePanel #RecipeInfo.TextSpans", Message.raw(recipeInfo));
 
-        // Check if player can use give buttons (Creative or OP)
+        // Check if player can use give buttons (Creative or OP, and config enabled)
         Player player = store.getComponent(ref, Player.getComponentType());
         boolean canGive = false;
-        if (player != null) {
+        if (player != null && JETPlugin.getInstance().getConfig().enableGiveButtons) {
             com.hypixel.hytale.protocol.GameMode gameMode = player.getGameMode();
             boolean isCreative = gameMode != null && gameMode.name().equals("Creative");
 
