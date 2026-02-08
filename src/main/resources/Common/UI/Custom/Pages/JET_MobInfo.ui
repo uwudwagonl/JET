@@ -8,28 +8,9 @@ $C.@PageOverlay {
       LayoutMode: Left;
       Padding: (Full: 10);
 
-      // Back button
-      Button #BackButton {
-        Anchor: (Width: 80, Height: 30);
-        Background: (Color: #2a2a2a(0.9));
-        Style: (Hovered: (Background: #3a3a3a), Pressed: (Background: #4a4a4a));
-
-        Label {
-          Text: "< Back";
-          Style: (
-            FontSize: 12,
-            RenderBold: true,
-            TextColor: #ffffff,
-            HorizontalAlignment: Center,
-            VerticalAlignment: Center
-          );
-        }
-      }
-
       // Title section
       Group {
         LayoutMode: Top;
-        Padding: (Left: 15);
         FlexWeight: 1;
 
         Label #MobName {
@@ -75,10 +56,10 @@ $C.@PageOverlay {
               Background: (Color: #0a0a0a(0.6));
               LayoutMode: Middle;
 
-              // Creature icon - ItemId set dynamically to JET_Creature_{name}
-              ItemIcon #CreatureIcon {
-                Anchor: (Width: 128, Height: 128);
-                Visible: true;
+              // Creature name label (placeholder until icon rendering is implemented)
+              Label #CreatureName {
+                Anchor: (Width: 140, Height: 140);
+                Style: (FontSize: 16, TextColor: #aaaaaa, HorizontalAlignment: Center, VerticalAlignment: Center);
               }
             }
           }
@@ -152,6 +133,7 @@ $C.@PageOverlay {
             }
           }
         }
+
       }
 
       // Right side - Loot table

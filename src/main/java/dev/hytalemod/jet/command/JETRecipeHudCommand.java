@@ -64,11 +64,11 @@ public class JETRecipeHudCommand extends AbstractCommand {
             if (args.isEmpty()) {
                 RecipeHudComponent component = store.getComponent(ref, RecipeHudComponent.getComponentType());
                 if (component == null || component.pinnedRecipes.isEmpty()) {
-                    playerRef.sendMessage(Message.raw("§eNo recipes pinned to HUD. Use recipe IDs from JET browser."));
+                    playerRef.sendMessage(Message.raw("No recipes pinned to HUD. Use recipe IDs from JET browser.").color("#FFAA00"));
                 } else {
-                    playerRef.sendMessage(Message.raw("§b[JET] Pinned Recipes:"));
+                    playerRef.sendMessage(Message.raw("[JET] Pinned Recipes:").color("#55AAFF"));
                     for (String recipeId : component.pinnedRecipes) {
-                        playerRef.sendMessage(Message.raw("  §7- §f" + recipeId));
+                        playerRef.sendMessage(Message.raw("  - " + recipeId).color("#AAAAAA"));
                     }
                 }
                 return;
@@ -78,7 +78,7 @@ public class JETRecipeHudCommand extends AbstractCommand {
 
             // Verify recipe exists
             if (!JETPlugin.RECIPES.containsKey(recipeId)) {
-                playerRef.sendMessage(Message.raw("§c[JET] Recipe not found: " + recipeId));
+                playerRef.sendMessage(Message.raw("[JET] Recipe not found: " + recipeId).color("#FF5555"));
                 return;
             }
 
@@ -86,9 +86,9 @@ public class JETRecipeHudCommand extends AbstractCommand {
             component.toggleRecipe(recipeId);
 
             if (component.hasRecipe(recipeId)) {
-                playerRef.sendMessage(Message.raw("§a[JET] Pinned recipe to HUD: §f" + recipeId));
+                playerRef.sendMessage(Message.raw("[JET] Pinned recipe to HUD: " + recipeId).color("#55FF55"));
             } else {
-                playerRef.sendMessage(Message.raw("§e[JET] Unpinned recipe from HUD: §f" + recipeId));
+                playerRef.sendMessage(Message.raw("[JET] Unpinned recipe from HUD: " + recipeId).color("#FFAA00"));
             }
 
             // Update HUD

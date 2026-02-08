@@ -68,23 +68,23 @@ public class JETBindCommand extends AbstractCommand {
         config.bindOKey = !config.bindOKey;
         plugin.saveConfig();
 
-        playerRef.sendMessage(Message.raw("§b━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-        playerRef.sendMessage(Message.raw("§b[JET] O Key Binding"));
-        playerRef.sendMessage(Message.raw("§b━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+        playerRef.sendMessage(Message.raw("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━").color("#55AAFF"));
+        playerRef.sendMessage(Message.raw("[JET] O Key Binding").color("#55AAFF"));
+        playerRef.sendMessage(Message.raw("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━").color("#55AAFF"));
         playerRef.sendMessage(Message.raw(""));
-        playerRef.sendMessage(Message.raw("§7  Status: " + (config.bindOKey ? "§a✓ ENABLED" : "§c✗ DISABLED")));
-        playerRef.sendMessage(Message.raw("§7  Cooldown: §f" + config.cooldownMs + "ms"));
+        playerRef.sendMessage(Message.raw("  Status: " + (config.bindOKey ? "✓ ENABLED" : "✗ DISABLED")).color(config.bindOKey ? "#55FF55" : "#FF5555"));
+        playerRef.sendMessage(Message.raw("  Cooldown: " + config.cooldownMs + "ms").color("#AAAAAA"));
         playerRef.sendMessage(Message.raw(""));
 
         if (config.bindOKey) {
-            playerRef.sendMessage(Message.raw("§a  ✓ O key will open JET browser"));
+            playerRef.sendMessage(Message.raw("  ✓ O key will open JET browser").color("#55FF55"));
         } else {
-            playerRef.sendMessage(Message.raw("§c  ✗ O key will toggle creative mode"));
+            playerRef.sendMessage(Message.raw("  ✗ O key will toggle creative mode").color("#FF5555"));
         }
 
         playerRef.sendMessage(Message.raw(""));
-        playerRef.sendMessage(Message.raw("§e  ⚠ Restart required for changes to take effect"));
-        playerRef.sendMessage(Message.raw("§b━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+        playerRef.sendMessage(Message.raw("  ⚠ Restart required for changes to take effect").color("#FFAA00"));
+        playerRef.sendMessage(Message.raw("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━").color("#55AAFF"));
 
         String action = config.bindOKey ? "enabled" : "disabled";
         plugin.log(Level.INFO, "[JET] O key binding " + action + " by " + playerRef.getUsername());

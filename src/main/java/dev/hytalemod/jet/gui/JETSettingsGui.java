@@ -180,12 +180,12 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
         try {
             plugin.log(Level.INFO, "[JET] Settings saved by " + playerRef.getUsername());
             if (needsRestart) {
-                playerRef.sendMessage(Message.raw("§e[JET] O key binding changed. Restart required for changes to take effect."));
+                playerRef.sendMessage(Message.raw("[JET] O key binding changed. Restart required for changes to take effect.").color("#FFAA00"));
             } else {
-                playerRef.sendMessage(Message.raw("§a[JET] Settings saved successfully!"));
+                playerRef.sendMessage(Message.raw("[JET] Settings saved successfully!").color("#55FF55"));
             }
         } catch (Exception e) {
-            playerRef.sendMessage(Message.raw("§c[JET] Failed to save settings: " + e.getMessage()));
+            playerRef.sendMessage(Message.raw("[JET] Failed to save settings: " + e.getMessage()).color("#FF5555"));
         }
     }
 

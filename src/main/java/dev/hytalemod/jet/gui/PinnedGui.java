@@ -196,10 +196,11 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
             // Show empty state message with better styling
             cmd.appendInline("#ItemCards", "Group { LayoutMode: Top; Padding: (Full: 30); Anchor: (Width: 100%); }");
 
-            // Star icon placeholder (using text)
+            // Star icon placeholder
             cmd.appendInline("#ItemCards[0]",
-                    "Label { Style: (FontSize: 48, TextColor: #ffaa00, HorizontalAlignment: Center); Padding: (Top: 60); }");
-            cmd.set("#ItemCards[0][0].Text", "★");
+                    "Group { LayoutMode: Middle; Padding: (Top: 60); Anchor: (Width: 100%, Height: 64); }");
+            cmd.appendInline("#ItemCards[0][0]",
+                    "ItemIcon { Anchor: (Width: 48, Height: 48); ItemId: JET_Icon_Star; Visible: true; }");
 
             // Main message
             cmd.appendInline("#ItemCards[0]",
@@ -282,6 +283,7 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
 
         cmd.set("#RecipePanel #SelectedIcon.ItemId", selectedItem);
         cmd.set("#RecipePanel #SelectedName.TextSpans", Message.raw(getDisplayName(item, language)));
+        cmd.set("#RecipePanel #ItemId.Text", selectedItem);
 
         // Get recipe IDs from global maps
         List<String> craftRecipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(selectedItem, Collections.emptyList());
@@ -294,7 +296,7 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         // Update pin button text based on current pin status
         UUID playerUuid = playerRef.getUuid();
         boolean isPinned = JETPlugin.getInstance().getPinnedItemsStorage().isPinned(playerUuid, selectedItem);
-        cmd.set("#RecipePanel #PinButton.Text", isPinned ? "[-]" : "[+]");
+        cmd.set("#RecipePanel #PinButton #PinIcon.ItemId", isPinned ? "JET_Icon_Unpin" : "JET_Icon_Pin");
 
         if ("craft".equals(activeSection)) {
             buildCraftSection(ref, cmd, events, craftRecipeIds);

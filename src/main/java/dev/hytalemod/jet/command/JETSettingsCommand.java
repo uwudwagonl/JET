@@ -58,7 +58,7 @@ public class JETSettingsCommand extends AbstractCommand {
                 JETSettingsGui gui = new JETSettingsGui(playerRef, JETPlugin.getInstance());
                 player.getPageManager().openCustomPage(ref, store, gui);
             } catch (Exception e) {
-                playerRef.sendMessage(Message.raw("§c[JET] Failed to open settings: " + e.getMessage()));
+                playerRef.sendMessage(Message.raw("[JET] Failed to open settings: " + e.getMessage()).color("#FF5555"));
                 JETPlugin.getInstance().log(Level.WARNING, "[JET] Failed to open settings GUI: " + e.getMessage());
             }
         }, world);

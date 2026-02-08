@@ -59,24 +59,11 @@ public class MobInfoGui extends InteractiveCustomUIPage<MobInfoGui.GuiData> {
 
         // Build loot table
         buildDropTable(cmd, events);
-
-        // Back button event - in title bar, opens JET browser
-        events.addEventBinding(
-                CustomUIEventBindingType.Activating,
-                "#BackButton",
-                EventData.of("BackAction", "back"),
-                false
-        );
     }
 
     private void buildModelSection(UICommandBuilder cmd, String mobName, String mobCategory) {
-        String creatureName = extractCreatureName(dropListId);
-
-        // Show creature icon using ItemIcon
-        String creatureItemId = "JET_Creature_" + creatureName;
-        JETPlugin.getInstance().log(Level.INFO, "[JET] MobInfo creature icon: " + creatureName + " -> " + creatureItemId);
-        // TEST: Use JET_PexGlyph to see if any mod item renders here
-        cmd.set("#Content #CreatureIconContainer #CreatureIcon.ItemId", "JET_PexGlyph");
+        // Show creature name as placeholder
+        cmd.set("#Content #CreatureIconContainer #CreatureName.Text", mobName);
 
         // Show representative drops (up to 4 unique items)
         List<String> previewItems = getPreviewItems();
@@ -163,22 +150,6 @@ public class MobInfoGui extends InteractiveCustomUIPage<MobInfoGui.GuiData> {
     @Override
     public void handleDataEvent(Ref<EntityStore> ref, Store<EntityStore> store, GuiData data) {
         super.handleDataEvent(ref, store, data);
-
-        JETPlugin.getInstance().log(Level.INFO, "[JET] MobInfoGui handleDataEvent called - backAction: " + data.backAction + ", selectedItem: " + data.selectedItem);
-
-        if (data.backAction != null && "back".equals(data.backAction)) {
-            JETPlugin.getInstance().log(Level.INFO, "[JET] Back button pressed, opening JET browser");
-            close();
-
-            // Open JET browser directly
-            com.hypixel.hytale.server.core.entity.entities.Player player = getPlayer(ref, store);
-            if (player != null) {
-                BrowserState saved = JETPlugin.getInstance().getBrowserStateStorage().getState(playerRef.getUuid());
-                JETGui gui = new JETGui(playerRef, CustomPageLifetime.CanDismiss, "", saved);
-                player.getPageManager().openCustomPage(ref, store, gui);
-            }
-            return;
-        }
 
         if (data.selectedItem != null && !data.selectedItem.isEmpty()) {
             JETPlugin.getInstance().log(Level.INFO, "[JET] Item clicked in MobInfo: " + data.selectedItem);
@@ -514,11 +485,9 @@ public class MobInfoGui extends InteractiveCustomUIPage<MobInfoGui.GuiData> {
     public static class GuiData {
         public static final BuilderCodec<GuiData> CODEC = BuilderCodec
                 .builder(GuiData.class, GuiData::new)
-                .addField(new KeyedCodec<>("BackAction", Codec.STRING), (d, v) -> d.backAction = v, d -> d.backAction)
                 .addField(new KeyedCodec<>("SelectedItem", Codec.STRING), (d, v) -> d.selectedItem = v, d -> d.selectedItem)
                 .build();
 
-        private String backAction;
         private String selectedItem;
 
         public GuiData() {}

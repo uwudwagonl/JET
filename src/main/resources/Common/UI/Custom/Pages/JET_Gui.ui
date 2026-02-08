@@ -106,10 +106,16 @@ $C.@PageOverlay {
             );
           }
 
-          TextButton #ClearFilters {
-            Anchor: (Width: 70, Height: 36);
-            Text: "Clear";
-            Style: $C.@SecondaryTextButtonStyle;
+          Button #ClearFilters {
+            Anchor: (Width: 36, Height: 36);
+            Background: (Color: #2a2a2a(0.6));
+            Style: (Hovered: (Background: #3a3a3a(0.8)), Pressed: (Background: #4a4a4a(0.9)));
+            LayoutMode: Middle;
+
+            ItemIcon #ClearFiltersIcon {
+              Anchor: (Width: 28, Height: 28);
+              Visible: true;
+            }
           }
         }
 
@@ -159,18 +165,17 @@ $C.@PageOverlay {
           Padding: (Top: 5, Bottom: 5);
           Anchor: (Height: 45);
 
-          TextButton #PrevItemPage {
-            Anchor: (Width: 70, Height: 35);
-            Text: "Prev";
-            Style: TextButtonStyle(
-              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true)),
-              Hovered: (Background: #3a3a3a(0.9)),
-              Pressed: (Background: #4a4a4a(1.0)),
-              Sounds: $C.@ButtonSounds
-            );
-            Background: #2a2a2a(0.6);
-            Padding: (Full: 8);
+          Button #PrevItemPage {
+            Anchor: (Width: 35, Height: 35);
+            Background: (Color: #2a2a2a(0.6));
+            Style: (Hovered: (Background: #3a3a3a(0.9)), Pressed: (Background: #4a4a4a(1.0)));
+            LayoutMode: Middle;
             Visible: false;
+
+            ItemIcon #PrevItemPageIcon {
+              Anchor: (Width: 28, Height: 28);
+              Visible: true;
+            }
           }
 
           Label #ItemPageInfo {
@@ -185,18 +190,17 @@ $C.@PageOverlay {
             Anchor: (Left: 10, Right: 10);
           }
 
-          TextButton #NextItemPage {
-            Anchor: (Width: 70, Height: 35);
-            Text: "Next";
-            Style: TextButtonStyle(
-              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true)),
-              Hovered: (Background: #3a3a3a(0.9)),
-              Pressed: (Background: #4a4a4a(1.0)),
-              Sounds: $C.@ButtonSounds
-            );
-            Background: #2a2a2a(0.6);
-            Padding: (Full: 8);
+          Button #NextItemPage {
+            Anchor: (Width: 35, Height: 35);
+            Background: (Color: #2a2a2a(0.6));
+            Style: (Hovered: (Background: #3a3a3a(0.9)), Pressed: (Background: #4a4a4a(1.0)));
+            LayoutMode: Middle;
             Visible: false;
+
+            ItemIcon #NextItemPageIcon {
+              Anchor: (Width: 28, Height: 28);
+              Visible: true;
+            }
           }
         }
 
@@ -210,14 +214,15 @@ $C.@PageOverlay {
             Anchor: (Height: 18);
             Padding: (Left: 5);
 
-            TextButton #ToggleHistory {
+            Button #ToggleHistory {
               Anchor: (Width: 18, Height: 18);
-              Text: "v";
-              Style: TextButtonStyle(
-                Default: (LabelStyle: (FontSize: 11, TextColor: #888888)),
-                Hovered: (LabelStyle: (TextColor: #ffffff)),
-                Sounds: $C.@ButtonSounds
-              );
+              Style: (Hovered: (Background: #3a3a3a(0.8)));
+              LayoutMode: Middle;
+
+              ItemIcon #ToggleHistoryIcon {
+                Anchor: (Width: 16, Height: 16);
+                Visible: true;
+              }
             }
 
             Label #HistoryLabel {
@@ -226,14 +231,15 @@ $C.@PageOverlay {
               Padding: (Left: 2);
             }
 
-            TextButton #ClearHistory {
-              Anchor: (Width: 40, Height: 18, Left: 8);
-              Text: "Clear";
-              Style: TextButtonStyle(
-                Default: (LabelStyle: (FontSize: 9, TextColor: #666666)),
-                Hovered: (LabelStyle: (TextColor: #ff6666)),
-                Sounds: $C.@ButtonSounds
-              );
+            Button #ClearHistory {
+              Anchor: (Width: 18, Height: 18, Left: 8);
+              Style: (Hovered: (Background: #3a3a3a(0.8)));
+              LayoutMode: Middle;
+
+              ItemIcon #ClearHistoryIcon {
+                Anchor: (Width: 14, Height: 14);
+                Visible: true;
+              }
             }
           }
 
@@ -289,6 +295,14 @@ $C.@PageOverlay {
                 );
               }
 
+              Label #ItemId {
+                Style: (
+                  FontSize: 10,
+                  TextColor: #666666
+                );
+                Padding: (Top: 2);
+              }
+
               Group #GiveButtonGroup {
                 LayoutMode: Left;
                 Padding: (Top: 8);
@@ -312,28 +326,28 @@ $C.@PageOverlay {
               }
             }
 
-            TextButton #PinButton {
-              Anchor: (Width: 70, Height: 30);
-              Text: "[+]";
-              Style: TextButtonStyle (
-                Default: (LabelStyle: (FontSize: 24, TextColor: #888888, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
-                Hovered: (LabelStyle: (FontSize: 24, TextColor: #ffd700, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.8)),
-                Pressed: (LabelStyle: (FontSize: 24, TextColor: #fa003f, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.9)),
-                Sounds: $C.@ButtonSounds
-              );
-              Background: #2a2a2a(0.6);
+            Button #PinButton {
+              Anchor: (Width: 36, Height: 36);
+              Background: (Color: #2a2a2a(0.6));
+              Style: (Hovered: (Background: #3a3a3a(0.8)), Pressed: (Background: #4a4a4a(0.9)));
+              LayoutMode: Middle;
+
+              ItemIcon #PinIcon {
+                Anchor: (Width: 32, Height: 32);
+                Visible: true;
+              }
             }
-            TextButton #PinToHudButton {
-                      Anchor: (Width: 70, Height: 30);
-                      Text: "[HUD]";
-                      Style: TextButtonStyle (
-                        Default: (LabelStyle: (TextColor: #888888, RenderBold: true)),
-                        Hovered: (LabelStyle: (TextColor: #55aaff), Background: #3a3a3a(0.8)),
-                        Pressed: (Background: #3a3a3a(0.9)),
-                        Sounds: $C.@ButtonSounds
-                      );
-                      Background: #2a2a2a(0.6);
-                    }
+            Button #PinToHudButton {
+              Anchor: (Width: 36, Height: 36);
+              Background: (Color: #2a2a2a(0.6));
+              Style: (Hovered: (Background: #3a3a3a(0.8)), Pressed: (Background: #4a4a4a(0.9)));
+              LayoutMode: Middle;
+
+              ItemIcon #HudIcon {
+                Anchor: (Width: 32, Height: 32);
+                Visible: true;
+              }
+            }
 
           }
 
@@ -419,17 +433,16 @@ $C.@PageOverlay {
           Padding: (Top: 10, Bottom: 15);
           Anchor: (Height: 50);
 
-          TextButton #PrevRecipe {
-            Anchor: (Width: 70, Height: 35);
-            Text: "Prev";
-            Style: TextButtonStyle(
-              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true)),
-              Hovered: (Background: #3a3a3a(0.9)),
-              Pressed: (Background: #4a4a4a(1.0)),
-              Sounds: $C.@ButtonSounds
-            );
-            Background: #2a2a2a(0.6);
-            Padding: (Full: 8);
+          Button #PrevRecipe {
+            Anchor: (Width: 35, Height: 35);
+            Background: (Color: #2a2a2a(0.6));
+            Style: (Hovered: (Background: #3a3a3a(0.9)), Pressed: (Background: #4a4a4a(1.0)));
+            LayoutMode: Middle;
+
+            ItemIcon #PrevRecipeIcon {
+              Anchor: (Width: 28, Height: 28);
+              Visible: true;
+            }
           }
 
           Label #PageInfo {
@@ -445,17 +458,16 @@ $C.@PageOverlay {
             Anchor: (Left: 10, Right: 10);
           }
 
-          TextButton #NextRecipe {
-            Anchor: (Width: 70, Height: 35);
-            Text: "Next";
-            Style: TextButtonStyle(
-              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true)),
-              Hovered: (Background: #3a3a3a(0.9)),
-              Pressed: (Background: #4a4a4a(1.0)),
-              Sounds: $C.@ButtonSounds
-            );
-            Background: #2a2a2a(0.6);
-            Padding: (Full: 8);
+          Button #NextRecipe {
+            Anchor: (Width: 35, Height: 35);
+            Background: (Color: #2a2a2a(0.6));
+            Style: (Hovered: (Background: #3a3a3a(0.9)), Pressed: (Background: #4a4a4a(1.0)));
+            LayoutMode: Middle;
+
+            ItemIcon #NextRecipeIcon {
+              Anchor: (Width: 28, Height: 28);
+              Visible: true;
+            }
           }
         }
       }

@@ -138,6 +138,16 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Gui.ui");
 
+        // Set static icon ItemIds for all icon buttons
+        cmd.set("#ClearFilters #ClearFiltersIcon.ItemId", "JET_Icon_Clear");
+        cmd.set("#ItemPagination #PrevItemPage #PrevItemPageIcon.ItemId", "JET_Icon_Arrow_Left");
+        cmd.set("#ItemPagination #NextItemPage #NextItemPageIcon.ItemId", "JET_Icon_Arrow_Right");
+        cmd.set("#HistoryBar #ToggleHistory #ToggleHistoryIcon.ItemId", "JET_Icon_Chevron_Down");
+        cmd.set("#HistoryBar #ClearHistory #ClearHistoryIcon.ItemId", "JET_Icon_Clear");
+        cmd.set("#RecipePanel #PinToHudButton #HudIcon.ItemId", "JET_Icon_Hud");
+        cmd.set("#RecipePagination #PrevRecipe #PrevRecipeIcon.ItemId", "JET_Icon_Arrow_Left");
+        cmd.set("#RecipePagination #NextRecipe #NextRecipeIcon.ItemId", "JET_Icon_Arrow_Right");
+
         events.addEventBinding(
                 CustomUIEventBindingType.ValueChanged,
                 "#SearchInput",
@@ -251,6 +261,28 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     @Override
     public void handleDataEvent(Ref<EntityStore> ref, Store<EntityStore> store, GuiData data) {
         super.handleDataEvent(ref, store, data);
+
+        // Handle opening drop source (MobInfoGui) - must be first to avoid stale UI commands
+        if (data.openDropSource != null && !data.openDropSource.isEmpty()) {
+            JETPlugin.getInstance().log(Level.INFO, "[JET] Opening MobInfoGui for drop source: " + data.openDropSource);
+
+            BrowserState currentState = captureState();
+            close();
+
+            MobInfoGui mobInfoGui = new MobInfoGui(
+                    playerRef,
+                    CustomPageLifetime.CanDismiss,
+                    data.openDropSource,
+                    this.selectedItem,
+                    currentState
+            );
+
+            com.hypixel.hytale.server.core.entity.entities.Player player = store.getComponent(ref, com.hypixel.hytale.server.core.entity.entities.Player.getComponentType());
+            if (player != null) {
+                player.getPageManager().openCustomPage(ref, store, mobInfoGui);
+            }
+            return;
+        }
 
         boolean needsItemUpdate = false;
         boolean needsRecipeUpdate = false;
@@ -463,28 +495,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             needsRecipeUpdate = true;
         }
 
-        // Handle opening drop source (MobInfoGui)
-        if (data.openDropSource != null && !data.openDropSource.isEmpty()) {
-            JETPlugin.getInstance().log(Level.INFO, "[JET] Opening MobInfoGui for drop source: " + data.openDropSource);
-
-            BrowserState currentState = captureState();
-            close();
-
-            MobInfoGui mobInfoGui = new MobInfoGui(
-                    playerRef,
-                    CustomPageLifetime.CanDismiss,
-                    data.openDropSource,
-                    this.selectedItem,
-                    currentState
-            );
-
-            com.hypixel.hytale.server.core.entity.entities.Player player = store.getComponent(ref, com.hypixel.hytale.server.core.entity.entities.Player.getComponentType());
-            if (player != null) {
-                player.getPageManager().openCustomPage(ref, store, mobInfoGui);
-            }
-            return;
-        }
-
         if (needsItemUpdate || needsRecipeUpdate) {
             UICommandBuilder cmd = new UICommandBuilder();
             UIEventBuilder events = new UIEventBuilder();
@@ -510,9 +520,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 component.toggleRecipe(recipeId);
 
                 if (component.hasRecipe(recipeId)) {
-                    playerRef.sendMessage(Message.raw("§a[JET] Pinned recipe to HUD"));
+                    playerRef.sendMessage(Message.raw("[JET] Pinned recipe to HUD").color("#55FF55"));
                 } else {
-                    playerRef.sendMessage(Message.raw("§e[JET] Unpinned recipe from HUD"));
+                    playerRef.sendMessage(Message.raw("[JET] Unpinned recipe from HUD").color("#FFAA00"));
                 }
 
                 // Update HUD
@@ -576,9 +586,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         // Build history items
         cmd.clear("#HistoryBar #HistoryItems");
 
-        // Update toggle button text with arrow
-        String arrow = historyCollapsed ? ">" : "v";
-        cmd.set("#HistoryBar #ToggleHistory.Text", arrow);
+        // Update toggle button icon with chevron direction
+        String chevronItem = historyCollapsed ? "JET_Icon_Arrow_Right" : "JET_Icon_Chevron_Down";
+        cmd.set("#HistoryBar #ToggleHistory #ToggleHistoryIcon.ItemId", chevronItem);
 
         if (viewHistory.isEmpty()) {
             cmd.set("#HistoryBar #HistoryLabel.Text", "(empty)");
@@ -1014,6 +1024,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         String displayName = getDisplayName(item, language);
         Message coloredName = getColoredItemName(item, displayName);
         cmd.set("#RecipePanel #SelectedName.TextSpans", coloredName);
+        cmd.set("#RecipePanel #ItemId.Text", selectedItem);
 
         // Add item stats display
         buildItemStats(item, cmd, language);
@@ -1053,7 +1064,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         // Update pin button text based on current pin state
         UUID playerUuid = playerRef.getUuid();
         boolean isPinned = JETPlugin.getInstance().getPinnedItemsStorage().isPinned(playerUuid, selectedItem);
-        cmd.set("#RecipePanel #PinButton.Text", isPinned ? "[-]" : "[+]");
+        cmd.set("#RecipePanel #PinButton #PinIcon.ItemId", isPinned ? "JET_Icon_Unpin" : "JET_Icon_Pin");
 
 
         // Add event bindings for give item buttons

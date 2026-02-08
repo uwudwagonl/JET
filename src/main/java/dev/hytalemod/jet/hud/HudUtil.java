@@ -39,5 +39,4 @@ public class HudUtil {
         updateHud(ref);
         InventoryTrackingSystem.forceUpdate(ref);
     }
-    Item
 }

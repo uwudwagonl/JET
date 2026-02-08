@@ -85,8 +85,8 @@ public class JETApi {
             // A more sophisticated implementation would use the command system
             // TODO: Implement proper GUI opening from PlayerRef only
             playerRef.sendMessage(com.hypixel.hytale.server.core.Message.raw(
-                "§b[JET] §7Opening browser for: §f" + searchQuery
-            ));
+                "[JET] Opening browser for: " + searchQuery
+            ).color("#55AAFF"));
 
             return true;
         } catch (Exception e) {
