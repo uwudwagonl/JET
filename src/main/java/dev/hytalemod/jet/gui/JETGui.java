@@ -91,7 +91,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.modFilter = "";
             this.gridColumns = DEFAULT_ITEMS_PER_ROW;
             this.gridRows = DEFAULT_MAX_ROWS;
-            this.showHiddenItems = true; // Default to true so items like Storm Saplings are visible
+            this.showHiddenItems = true; 
             this.showSalvagerRecipes = true;
         }
     }

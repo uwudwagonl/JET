@@ -19,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 
 /**
+ * [THIS DOES NOT CURRENTLY WORK] 
  * Command to enable/disable O key binding
  * Usage: /jetbind <on|off|status>
  */

@@ -9,7 +9,7 @@ import com.hypixel.hytale.server.core.universe.PlayerRef;
 import dev.hytalemod.jet.JETPlugin;
 
 /**
- * Intercepts O key presses (GameModeSwap packets) to trigger JET browser
+ * Intercepts O key presses (GameModeSwap packets) to trigger JET browser [WIP]
  */
 public class OKeyPacketFilter implements PlayerPacketFilter {
     private final JETPlugin plugin;

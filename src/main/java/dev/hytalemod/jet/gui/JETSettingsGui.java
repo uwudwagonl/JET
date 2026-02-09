@@ -125,7 +125,7 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
         cmd.set("#AppliesOnOPCheck.Value", appliesOnOP);
         cmd.set("#GiveButtonsCheck.Value", enableGiveButtons);
 
-        // Event bindings
+        // Event bindings [WIP]
         events.addEventBinding(
             CustomUIEventBindingType.ValueChanged,
             "#BindOKeyCheck",
