@@ -145,9 +145,9 @@ public class JETPlugin extends JavaPlugin {
         // Register commands
         getCommandRegistry().registerCommand(new JETCommand());
         getCommandRegistry().registerCommand(new JETPinnedCommand());
-        getCommandRegistry().registerCommand(new JETSettingsCommand());
-        getCommandRegistry().registerCommand(new JETBindCommand());
-        getCommandRegistry().registerCommand(new JETRecipeHudCommand());
+        // WIP: getCommandRegistry().registerCommand(new JETSettingsCommand());
+        // WIP: getCommandRegistry().registerCommand(new JETBindCommand());
+        // WIP: getCommandRegistry().registerCommand(new JETRecipeHudCommand());
         // Register asset load events
         getEventRegistry().register(LoadedAssetsEvent.class, Item.class, JETPlugin::onItemsLoaded);
         getEventRegistry().register(LoadedAssetsEvent.class, CraftingRecipe.class, JETPlugin::onRecipesLoaded);

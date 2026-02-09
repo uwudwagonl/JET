@@ -701,23 +701,22 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             cmd.append("#ItemCards[" + row + "]", "Pages/JET_ItemIcon.ui");
             String sel = "#ItemCards[" + row + "][" + col + "]";
 
-            // Scale item card based on grid size - container is ~950px wide
-            int cardWidth = (950 / gridColumns) - 10;
+            // Scale item card based on grid size - container is ~920px wide (accounting for scrollbar and padding)
+            int cardWidth = 920 / gridColumns;
             int iconSize = Math.max(32, Math.min(64, cardWidth - 20));
 
             // Set button anchor with dynamic width
             com.hypixel.hytale.server.core.ui.Anchor buttonAnchor = new com.hypixel.hytale.server.core.ui.Anchor();
             buttonAnchor.setWidth(com.hypixel.hytale.server.core.ui.Value.of(cardWidth));
             buttonAnchor.setBottom(com.hypixel.hytale.server.core.ui.Value.of(10));
-            buttonAnchor.setRight(com.hypixel.hytale.server.core.ui.Value.of(10));
             cmd.setObject(sel + " #ItemButton.Anchor", buttonAnchor);
 
-            // Set icon anchor with dynamic size
-            com.hypixel.hytale.server.core.ui.Anchor iconAnchor = new com.hypixel.hytale.server.core.ui.Anchor();
-            iconAnchor.setWidth(com.hypixel.hytale.server.core.ui.Value.of(iconSize));
-            iconAnchor.setHeight(com.hypixel.hytale.server.core.ui.Value.of(iconSize));
-            iconAnchor.setBottom(com.hypixel.hytale.server.core.ui.Value.of(5));
-            cmd.setObject(sel + " #ItemButton #ItemIcon.Anchor", iconAnchor);
+            // Set icon and quality background anchors with dynamic size
+            com.hypixel.hytale.server.core.ui.Anchor qualityAnchor = new com.hypixel.hytale.server.core.ui.Anchor();
+            qualityAnchor.setWidth(com.hypixel.hytale.server.core.ui.Value.of(iconSize));
+            qualityAnchor.setHeight(com.hypixel.hytale.server.core.ui.Value.of(iconSize));
+            qualityAnchor.setBottom(com.hypixel.hytale.server.core.ui.Value.of(5));
+            cmd.setObject(sel + " #ItemButton #QualityBg.Anchor", qualityAnchor);
 
             // Set quality background texture on the AssetImage wrapper
             try {
@@ -1353,8 +1352,21 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     }
 
     private void buildRecipeDisplay(UICommandBuilder cmd, UIEventBuilder events, CraftingRecipe recipe, String rSel, Ref<EntityStore> ref) {
-        String recipeId = recipe.getId();
-        if (recipeId.contains(":")) recipeId = recipeId.substring(recipeId.indexOf(":") + 1);
+        // Resolve recipe title from primary output item name
+        String recipeTitle = null;
+        MaterialQuantity[] outputs = recipe.getOutputs();
+        if (outputs != null && outputs.length > 0 && outputs[0] != null && outputs[0].getItemId() != null) {
+            Item outputItem = JETPlugin.ITEMS.get(outputs[0].getItemId());
+            if (outputItem != null) {
+                recipeTitle = getDisplayName(outputItem, playerRef.getLanguage());
+            }
+        }
+        if (recipeTitle == null) {
+            // Fallback to recipe ID
+            recipeTitle = recipe.getId();
+            if (recipeTitle.contains(":")) recipeTitle = recipeTitle.substring(recipeTitle.indexOf(":") + 1);
+            recipeTitle = recipeTitle.replace("_", " ");
+        }
 
         String benchInfo = "";
         if (recipe.getBenchRequirement() != null && recipe.getBenchRequirement().length > 0) {
@@ -1362,7 +1374,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             benchInfo = " [" + formatBenchName(bench.id) + " T" + bench.requiredTierLevel + "]";
         }
 
-        String fullTitle = recipeId + benchInfo;
+        String fullTitle = recipeTitle + benchInfo;
         cmd.set(rSel + " #RecipeTitle.TextSpans", Message.raw(fullTitle));
 
         // Get player for inventory scanning
@@ -1443,7 +1455,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
 
         // Add output items
-        MaterialQuantity[] outputs = recipe.getOutputs();
         cmd.clear(rSel + " #OutputItems");
         if (outputs != null && outputs.length > 0) {
             for (int j = 0; j < outputs.length; j++) {
