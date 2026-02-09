@@ -1598,6 +1598,16 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
         } catch (Exception ignored) {}
 
+        // Ore biome spawn information
+        List<String> biomeSpawns = JETPlugin.getInstance().getDropListRegistry().getOreBiomeSpawns(itemId);
+        if (!biomeSpawns.isEmpty()) {
+            tooltip.separator();
+            tooltip.append("Ore Spawn Locations", "#ffaa00").nl();
+            for (String biome : biomeSpawns) {
+                tooltip.append("  ⛏ " + biome, "#88ff88").nl();
+            }
+        }
+
         // General Info
         tooltip.separator();
         if (item.getMaxDurability() > 0) {
@@ -1747,6 +1757,16 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
         StringBuilder stats = new StringBuilder();
         boolean hasStats = false;
+        String itemId = item.getId();
+        List<String> biomeSpawns = JETPlugin.getInstance().getDropListRegistry().getOreBiomeSpawns(itemId);
+        if (!biomeSpawns.isEmpty()) {
+            hasStats = true;
+            stats.append("Ore Spawn Locations:\n");
+            for (String biome : biomeSpawns) {
+                stats.append("  ⛏ ").append(biome).append("\n");
+            }
+            stats.append("\n");
+        }
 
         // Weapon stats
         try {

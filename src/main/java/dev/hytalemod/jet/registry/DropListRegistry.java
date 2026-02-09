@@ -21,6 +21,9 @@ public class DropListRegistry {
     // Block ID patterns -> Items they drop (for linking ore blocks to ore items)
     private final Map<String, String> blockToItemMapping = new HashMap<>();
 
+    // Item ID -> Biome spawn info for ores
+    private final Map<String, List<String>> oreBiomeSpawns = new HashMap<>();
+
     public void reload(Map<String, ItemDropList> newDropLists) {
         for (Map.Entry<String, ItemDropList> entry : newDropLists.entrySet()) {
             ItemDropList dropList = entry.getValue();
@@ -37,6 +40,9 @@ public class DropListRegistry {
 
         // Build block-to-item mappings AFTER indexing drop lists
         buildBlockToItemMappings();
+
+        // Build ore biome spawn data
+        buildOreBiomeSpawns();
     }
 
     /**
@@ -174,6 +180,63 @@ public class DropListRegistry {
         }
 
         JETPlugin.getInstance().log(Level.INFO, "[JET] Built " + blockToItemMapping.size() + " block-to-item mappings");
+    }
+
+    /**
+     * Build ore biome spawn data based on drop list patterns and known ore spawns
+     */
+    private void buildOreBiomeSpawns() {
+        // Common ore biome patterns - these are educated guesses based on typical Hytale zones
+        Map<String, List<String>> orePatterns = new HashMap<>();
+
+        // Zone 1 (Emerald Grove) - Common surface ores
+        orePatterns.put("Copper", Arrays.asList("Zone 1: Emerald Grove (Surface)", "Zone 1: Caves"));
+        orePatterns.put("Iron", Arrays.asList("Zone 1: Emerald Grove (Common)", "Zone 1: Caves", "Zone 2: Howling Sands"));
+
+        // Precious ores
+        orePatterns.put("Gold", Arrays.asList("Zone 1: Deep Caves", "Zone 2: Howling Sands", "Zone 3: Borea"));
+        orePatterns.put("Silver", Arrays.asList("Zone 1: Caves", "Zone 3: Borea (Common)"));
+
+        // Advanced ores
+        orePatterns.put("Cobalt", Arrays.asList("Zone 1: Deep Caves (Rare)", "Zone 4: Devastated Lands"));
+        orePatterns.put("Thorium", Arrays.asList("Zone 4: Devastated Lands", "Zone 5: Deep Underground"));
+        orePatterns.put("Mithril", Arrays.asList("Zone 3: Borea (Deep)", "Zone 5: Orbis (Rare)"));
+        orePatterns.put("Adamantite", Arrays.asList("Zone 5: Orbis (Deep)", "Zone 6: Varyn (Very Rare)"));
+        orePatterns.put("Onyxium", Arrays.asList("Zone 6: Varyn (Extremely Rare)", "Void Below"));
+
+        // Map ore items to their spawn locations
+        for (Map.Entry<String, List<String>> entry : orePatterns.entrySet()) {
+            String oreType = entry.getKey();
+            List<String> biomes = entry.getValue();
+
+            // Store for the ore item
+            String oreItemId = "Ore_" + oreType;
+            oreBiomeSpawns.put(oreItemId, new ArrayList<>(biomes));
+
+            // Also store for ore blocks
+            String[] rockTypes = {"Stone", "Sandstone", "Shale", "Slate", "Basalt", "Volcanic"};
+            for (String rock : rockTypes) {
+                String oreBlockId = "Ore_" + oreType + "_" + rock;
+                oreBiomeSpawns.put(oreBlockId, new ArrayList<>(biomes));
+            }
+        }
+
+        JETPlugin.getInstance().log(Level.INFO, "[JET] Built biome spawn data for " + orePatterns.size() + " ore types");
+    }
+
+    /**
+     * Get biome spawn information for an ore item/block
+     */
+    public List<String> getOreBiomeSpawns(String itemId) {
+        List<String> spawns = oreBiomeSpawns.get(itemId);
+        return spawns != null ? new ArrayList<>(spawns) : Collections.emptyList();
+    }
+
+    /**
+     * Check if an item is an ore with biome spawn data
+     */
+    public boolean hasOreBiomeData(String itemId) {
+        return oreBiomeSpawns.containsKey(itemId) && !oreBiomeSpawns.get(itemId).isEmpty();
     }
 
     /**
