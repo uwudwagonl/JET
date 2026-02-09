@@ -75,7 +75,7 @@ tasks {
     register<Copy>("deployToMods") {
         dependsOn(shadowJar)
         from(shadowJar.get().archiveFile)
-        into("C:/Users/benja/AppData/Roaming/Hytale/UserData/Mods")
+        into("C:/Users/PC/AppData/Roaming/Hytale/UserData/Mods")
     }
 
     build {
