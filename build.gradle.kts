@@ -57,7 +57,7 @@ tasks {
     // Configure ShadowJar
     shadowJar {
         archiveBaseName.set("JET")
-        archiveVersion.set("1.0.0-beta.10")
+        archiveVersion.set("1.6.2")
         archiveClassifier.set("")
     }
     

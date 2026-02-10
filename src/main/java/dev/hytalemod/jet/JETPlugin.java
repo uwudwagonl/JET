@@ -52,7 +52,7 @@ import java.util.Date;
  */
 public class JETPlugin extends JavaPlugin {
 
-    public static final String VERSION = "1.0.0-beta.10";
+    public static final String VERSION = "1.6.2";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String CONFIG_FILE = "JET_config.json";
 
