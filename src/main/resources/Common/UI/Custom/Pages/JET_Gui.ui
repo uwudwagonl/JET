@@ -364,6 +364,49 @@ $C.@PageOverlay {
               );
             }
           }
+
+          Group #AdvancedInfoSection {
+            LayoutMode: Top;
+            Padding: (Top: 10);
+            Visible: false;
+
+            Group #AdvancedInfoHeader {
+              LayoutMode: Left;
+              Anchor: (Height: 18);
+              Padding: (Bottom: 3);
+
+              Button #ToggleAdvancedInfo {
+                Anchor: (Width: 18, Height: 18);
+                Style: (Hovered: (Background: #3a3a3a(0.8)));
+                LayoutMode: Middle;
+
+                ItemIcon #ToggleAdvancedInfoIcon {
+                  Anchor: (Width: 16, Height: 16);
+                  Visible: true;
+                }
+              }
+
+              Label #AdvancedInfoLabel {
+                Text: "Advanced Info";
+                Style: (FontSize: 12, TextColor: #888888, VerticalAlignment: Center, RenderBold: true);
+                Padding: (Left: 3);
+              }
+            }
+
+            Group #AdvancedInfoContent {
+              LayoutMode: Top;
+              Padding: (Top: 5, Left: 5);
+              Background: (Color: #0a0a0a(0.5));
+              Visible: true;
+
+              Label #AdvancedInfoText {
+                Style: (
+                  FontSize: 10,
+                  TextColor: #99aacc
+                );
+              }
+            }
+          }
         }
 
         Group #SectionButtons {

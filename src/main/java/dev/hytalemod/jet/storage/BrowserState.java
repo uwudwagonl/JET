@@ -24,6 +24,7 @@ public class BrowserState {
     public boolean showSalvagerRecipes = true;
     public List<String> viewHistory = new ArrayList<>();
     public boolean historyCollapsed = false;
+    public boolean advancedInfoCollapsed = true;
 
     public BrowserState() {}
 }
