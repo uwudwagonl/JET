@@ -510,6 +510,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             sendUpdate(cmd, events, false);
         }
 
+        // Pin-to-HUD feature adapted from BIV (BetterItemViewer)
         if (data.pinToHud != null && "toggle".equals(data.pinToHud) && this.selectedItem != null) {
             // Get the first crafting recipe for this item to pin to HUD
             List<String> recipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(this.selectedItem, Collections.emptyList());
