@@ -6,6 +6,7 @@ import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.protocol.BenchRequirement;
+import com.hypixel.hytale.protocol.ItemResourceType;
 import com.hypixel.hytale.protocol.packets.interface_.CustomPageLifetime;
 import com.hypixel.hytale.protocol.packets.interface_.CustomUIEventBindingType;
 import com.hypixel.hytale.server.core.Message;
@@ -69,6 +70,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     private boolean showSalvagerRecipes; // Show salvager recipes
     private LinkedList<String> viewHistory; // Recently viewed items
     private boolean historyCollapsed; // Whether history bar is collapsed
+    private boolean advancedInfoCollapsed; // Whether advanced info section is collapsed
     private static final int MAX_HISTORY_SIZE = 20;
 
     public JETGui(PlayerRef playerRef, CustomPageLifetime lifetime, String initialSearch, BrowserState saved) {
@@ -76,6 +78,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         this.activeFilters = new HashSet<>();
         this.viewHistory = new LinkedList<>();
         this.historyCollapsed = false;
+        this.advancedInfoCollapsed = true; // Collapsed by default
 
         if (saved != null) {
             applySavedState(saved);
@@ -132,6 +135,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
         }
         this.historyCollapsed = s.historyCollapsed;
+        this.advancedInfoCollapsed = s.advancedInfoCollapsed;
     }
 
     @Override
@@ -145,6 +149,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         cmd.set("#HistoryBar #ToggleHistory #ToggleHistoryIcon.ItemId", "JET_Icon_Chevron_Down");
         cmd.set("#HistoryBar #ClearHistory #ClearHistoryIcon.ItemId", "JET_Icon_Clear");
         cmd.set("#RecipePanel #PinToHudButton #HudIcon.ItemId", "JET_Icon_Hud");
+        cmd.set("#RecipePanel #AdvancedInfoSection #ToggleAdvancedInfo #ToggleAdvancedInfoIcon.ItemId", "JET_Icon_Arrow_Right");
         cmd.set("#RecipePagination #PrevRecipe #PrevRecipeIcon.ItemId", "JET_Icon_Arrow_Left");
         cmd.set("#RecipePagination #NextRecipe #NextRecipeIcon.ItemId", "JET_Icon_Arrow_Right");
 
@@ -251,6 +256,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
         // History bar buttons
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ToggleHistory", EventData.of("ToggleHistory", "toggle"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#RecipePanel #AdvancedInfoSection #ToggleAdvancedInfo", EventData.of("ToggleAdvancedInfo", "toggle"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ClearHistory", EventData.of("ClearHistory", "clear"), false);
 
         buildItemList(ref, cmd, events, store);
@@ -476,6 +482,15 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             sendUpdate(cmd, events, false);
         }
 
+        // Handle advanced info toggle
+        if (data.toggleAdvancedInfo != null && "toggle".equals(data.toggleAdvancedInfo)) {
+            advancedInfoCollapsed = !advancedInfoCollapsed;
+            UICommandBuilder cmd = new UICommandBuilder();
+            UIEventBuilder events = new UIEventBuilder();
+            buildRecipePanel(ref, cmd, events, store);
+            sendUpdate(cmd, events, false);
+        }
+
         // Handle clear history
         if (data.clearHistory != null && "clear".equals(data.clearHistory)) {
             viewHistory.clear();
@@ -510,6 +525,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             sendUpdate(cmd, events, false);
         }
 
+        // Pin-to-HUD feature adapted from BIV (BetterItemViewer)
         if (data.pinToHud != null && "toggle".equals(data.pinToHud) && this.selectedItem != null) {
             // Get the first crafting recipe for this item to pin to HUD
             List<String> recipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(this.selectedItem, Collections.emptyList());
@@ -554,6 +570,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
         s.viewHistory = new ArrayList<>(viewHistory);
         s.historyCollapsed = historyCollapsed;
+        s.advancedInfoCollapsed = advancedInfoCollapsed;
         return s;
     }
 
@@ -1027,6 +1044,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
         // Add item stats display
         buildItemStats(item, cmd, language);
+
+        // Add advanced info display
+        buildAdvancedInfo(item, cmd, events, language);
 
         // Get recipe IDs from global maps
         List<String> craftRecipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(selectedItem, Collections.emptyList());
@@ -1768,23 +1788,45 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             stats.append("\n");
         }
 
-        // Weapon stats
+        // Weapon stats - extract from interactions
         try {
             Object weaponObj = item.getClass().getMethod("getWeapon").invoke(item);
             if (weaponObj != null) {
                 hasStats = true;
                 stats.append("Weapon Stats:\n");
 
-                // Try to get damage interactions
+                // Extract damage values from Interaction objects
                 try {
-                    Method getDamageMethod = weaponObj.getClass().getMethod("getDamageInteractions");
-                    Object damageInteractions = getDamageMethod.invoke(weaponObj);
+                    java.lang.reflect.Field interactionsField = item.getClass().getDeclaredField("interactions");
+                    interactionsField.setAccessible(true);
+                    Object interactions = interactionsField.get(item);
 
-                    if (damageInteractions instanceof java.util.Map) {
-                        java.util.Map<?, ?> damageMap = (java.util.Map<?, ?>) damageInteractions;
-                        for (java.util.Map.Entry<?, ?> entry : damageMap.entrySet()) {
-                            String interactionName = entry.getKey().toString().replace("_", " ");
-                            stats.append("  ").append(interactionName).append(": ").append(entry.getValue()).append("\n");
+                    if (interactions != null && interactions instanceof java.util.Map) {
+                        stats.append("\n");
+                        java.util.Map<?, ?> interactionMap = (java.util.Map<?, ?>) interactions;
+
+                        // DEBUG: Show first interaction's structure
+                        if (!interactionMap.isEmpty()) {
+                            Object firstInteraction = interactionMap.values().iterator().next();
+                            if (firstInteraction != null) {
+                                stats.append("[DEBUG] First interaction class: ").append(firstInteraction.getClass().getName()).append("\n");
+                                stats.append("[DEBUG] Fields:\n");
+                                for (java.lang.reflect.Field f : firstInteraction.getClass().getDeclaredFields()) {
+                                    stats.append("  - ").append(f.getName()).append(" (").append(f.getType().getSimpleName()).append(")\n");
+                                }
+                                stats.append("[DEBUG] Methods (sample):\n");
+                                int methodCount = 0;
+                                for (Method m : firstInteraction.getClass().getMethods()) {
+                                    if (!m.getName().startsWith("get") && !m.getName().startsWith("is")) continue;
+                                    stats.append("  - ").append(m.getName()).append("()\n");
+                                    if (++methodCount >= 15) break;
+                                }
+                                stats.append("\n");
+                            }
+                        }
+
+                        for (java.util.Map.Entry<?, ?> entry : interactionMap.entrySet()) {
+                            stats.append("  ").append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
                         }
                     }
                 } catch (Exception ignored) {}
@@ -1864,6 +1906,125 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         } else {
             cmd.set("#RecipePanel #ItemStatsSection.Visible", false);
         }
+    }
+
+    /**
+     * Resolves interaction variable references (values starting with *)
+     * to their actual numeric values
+     */
+    private Object resolveInteractionVar(Object value, java.util.Map<String, Object> varsMap) {
+        if (value == null) return "null";
+
+        String valueStr = value.toString();
+
+        // If it's a reference (starts with *), resolve it
+        if (valueStr.startsWith("*")) {
+            String refKey = valueStr.substring(1); // Remove the *
+            Object resolved = varsMap.get(refKey);
+
+            if (resolved != null) {
+                // Recursively resolve in case it's a nested reference
+                return resolveInteractionVar(resolved, varsMap);
+            }
+            return valueStr; // Return original if can't resolve
+        }
+
+        // It's an actual value - format it nicely
+        if (value instanceof Number) {
+            Number num = (Number) value;
+            // Format floats/doubles with 1 decimal place, integers as-is
+            if (value instanceof Float || value instanceof Double) {
+                return String.format("%.1f", num.doubleValue());
+            }
+            return num.toString();
+        }
+
+        return valueStr;
+    }
+
+    private void buildAdvancedInfo(Item item, UICommandBuilder cmd, UIEventBuilder events, String language) {
+        if (item == null) {
+            cmd.set("#RecipePanel #AdvancedInfoSection.Visible", false);
+            return;
+        }
+
+        cmd.set("#RecipePanel #AdvancedInfoSection.Visible", true);
+
+        // Update visibility and UI based on collapsed state
+        cmd.set("#RecipePanel #AdvancedInfoSection #AdvancedInfoContent.Visible", !advancedInfoCollapsed);
+
+        // Update toggle button chevron icon
+        String chevronItem = advancedInfoCollapsed ? "JET_Icon_Arrow_Right" : "JET_Icon_Chevron_Down";
+        cmd.set("#RecipePanel #AdvancedInfoSection #ToggleAdvancedInfo #ToggleAdvancedInfoIcon.ItemId", chevronItem);
+
+        // Build the advanced information content (technical details only)
+        StringBuilder advInfo = new StringBuilder();
+        String itemId = item.getId();
+
+        // === ITEM PROPERTIES ===
+        advInfo.append("--- Item Properties ---\n");
+        advInfo.append("  Item ID: ").append(itemId).append("\n");
+        advInfo.append("  Namespace: ").append(extractNamespace(itemId)).append("\n");
+        advInfo.append("  Max Stack: ").append(item.getMaxStack()).append("\n");
+
+        if (item.getMaxDurability() > 0) {
+            advInfo.append("  Max Durability: ").append(String.format("%.0f", item.getMaxDurability())).append("\n");
+        }
+
+        // Quality
+        try {
+            int qualityIndex = item.getQualityIndex();
+            ItemQuality quality = ItemQuality.getAssetMap().getAsset(qualityIndex);
+            if (quality != null) {
+                String qualityKey = quality.getLocalizationKey();
+                if (qualityKey != null) {
+                    String qualityName = I18nModule.get().getMessage(language, qualityKey);
+                    if (qualityName != null && !qualityName.isEmpty()) {
+                        advInfo.append("  Quality: ").append(qualityName).append(" (").append(qualityIndex).append(")\n");
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // Resource Types
+        try {
+            ItemResourceType[] resourceTypes = item.getResourceTypes();
+            if (resourceTypes != null && resourceTypes.length > 0) {
+                advInfo.append("\n--- Resource Types ---\n");
+                for (ItemResourceType rt : resourceTypes) {
+                    if (rt != null && rt.id != null) {
+                        advInfo.append("  • ").append(rt.id).append("\n");
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // === TRANSLATION KEYS (for modders) ===
+        try {
+            String transKey = item.getTranslationKey();
+            String descKey = item.getDescriptionTranslationKey();
+            if ((transKey != null && !transKey.isEmpty()) || (descKey != null && !descKey.isEmpty())) {
+                advInfo.append("\n--- Translation Keys ---\n");
+                if (transKey != null && !transKey.isEmpty()) {
+                    advInfo.append("  Name: ").append(transKey).append("\n");
+                }
+                if (descKey != null && !descKey.isEmpty()) {
+                    advInfo.append("  Description: ").append(descKey).append("\n");
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // Set the advanced info text
+        cmd.set("#RecipePanel #AdvancedInfoSection #AdvancedInfoText.TextSpans", Message.raw(advInfo.toString()));
+    }
+
+    private String extractNamespace(String itemId) {
+        if (itemId == null) return "Unknown";
+        int colonIndex = itemId.indexOf(':');
+        if (colonIndex > 0) {
+            return itemId.substring(0, colonIndex);
+        }
+        return "Common";
     }
 
     private List<MaterialQuantity> getRecipeInputs(CraftingRecipe recipe) {
@@ -1951,6 +2112,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("HistoryItemClick", Codec.STRING), (d, v) -> d.historyItemClick = v, d -> d.historyItemClick)
                 .addField(new KeyedCodec<>("OpenDropSource", Codec.STRING), (d, v) -> d.openDropSource = v, d -> d.openDropSource)
                 .addField(new KeyedCodec<>("PinToHud", Codec.STRING), (d, v) -> d.pinToHud = v, d -> d.pinToHud)
+                .addField(new KeyedCodec<>("ToggleAdvancedInfo", Codec.STRING), (d, v) -> d.toggleAdvancedInfo = v, d -> d.toggleAdvancedInfo)
                 .build();
 
         private String searchQuery;
@@ -1973,6 +2135,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         private String clearHistory;
         private String historyItemClick;
         private String openDropSource;
+        private String toggleAdvancedInfo;
 
         public GuiData() {}
     }

@@ -57,7 +57,7 @@ tasks {
     // Configure ShadowJar
     shadowJar {
         archiveBaseName.set("JET")
-        archiveVersion.set("1.0.0-beta.10")
+        archiveVersion.set("1.6.2")
         archiveClassifier.set("")
     }
     
@@ -75,7 +75,16 @@ tasks {
     register<Copy>("deployToMods") {
         dependsOn(shadowJar)
         from(shadowJar.get().archiveFile)
-        into("C:/Users/PC/AppData/Roaming/Hytale/UserData/Mods")
+
+        // Dynamic path that works on any machine
+        val userHome = System.getProperty("user.home")
+        val os = System.getProperty("os.name").lowercase()
+        val modsPath = when {
+            os.contains("win") -> "$userHome/AppData/Roaming/Hytale/UserData/Mods"
+            os.contains("mac") -> "$userHome/Library/Application Support/Hytale/UserData/Mods"
+            else -> "$userHome/.local/share/Hytale/UserData/Mods" // Linux
+        }
+        into(modsPath)
     }
 
     build {

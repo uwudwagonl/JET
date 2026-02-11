@@ -1,5 +1,7 @@
 package dev.hytalemod.jet.util;
 
+// Exclusion filter (-term) adapted from JEHI (Just Enough Hytale Items)
+
 import com.hypixel.hytale.server.core.asset.type.item.config.Item;
 
 import java.util.ArrayList;
