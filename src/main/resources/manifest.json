@@ -2,7 +2,7 @@
   "Group": "JET",
   "Name": "Just Enough Tales (JET)",
   "Version": "1.6.2",
-  "Description": "Browse all items with search, categories, recipes and uses. Commands: /jet (Adventure) - open item browser | /pinned (Adventure) - view pinned items | WIP: /jetsettings (Adventure) - open settings GUI | WIP: /recipehud (Adventure) - pin/unpin recipes to HUD overlay | WIP: /jetbind (Creative) - toggle O key binding",
+  "Description": "Browse all items with search, categories, recipes and uses. Commands: /jet (Adventure) - open item browser | /pinned (Adventure) - view pinned items | WIP: /jetconfig & /jcfg (Adventure) - open settings GUI",
   "Authors": [{"Name": "uwudwagon"}, {"Name": "kuudraloremaster (carrot)"}],
   "Website": "",
   "ServerVersion": "*",
