@@ -1,3 +1,4 @@
+// File adapted from BIV (Better Item Viewer)
 package dev.hytalemod.jet.hud;
 
 import com.hypixel.hytale.component.Ref;
