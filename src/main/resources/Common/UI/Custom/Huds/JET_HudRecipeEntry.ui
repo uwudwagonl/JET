@@ -1,3 +1,4 @@
+// UI file adapted from BIV (BetterItemViewer)
 $C = "../Common.ui";
 
 Group {

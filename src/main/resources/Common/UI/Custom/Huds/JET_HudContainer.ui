@@ -1,3 +1,4 @@
+// UI file adapted from BIV (BetterItemViewer)
 Group #Recipes {
   LayoutMode: Top;
   Anchor: (Width: 320, Right: 4, Top: 0);
