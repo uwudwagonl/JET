@@ -18,14 +18,11 @@ import javax.annotation.Nonnull;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 
-/**
- * Command to open JET settings GUI
- */
-public class JETSettingsCommand extends AbstractCommand {
+public class JETConfigCommand extends AbstractCommand {
 
-    public JETSettingsCommand() {
-        super("jetsettings", "Open JET settings", false);
-        addAliases("jsettings");
+    public JETConfigCommand() {
+        super("jetconfig", "Open JET configuration", false);
+        addAliases("jcfg");
         setPermissionGroup(GameMode.Adventure);
     }
 
@@ -58,8 +55,8 @@ public class JETSettingsCommand extends AbstractCommand {
                 JETSettingsGui gui = new JETSettingsGui(playerRef, JETPlugin.getInstance());
                 player.getPageManager().openCustomPage(ref, store, gui);
             } catch (Exception e) {
-                playerRef.sendMessage(Message.raw("[JET] Failed to open settings: " + e.getMessage()).color("#FF5555"));
-                JETPlugin.getInstance().log(Level.WARNING, "[JET] Failed to open settings GUI: " + e.getMessage());
+                playerRef.sendMessage(Message.raw("[JET] Failed to open config: " + e.getMessage()).color("#FF5555"));
+                JETPlugin.getInstance().log(Level.WARNING, "[JET] Failed to open config GUI: " + e.getMessage());
             }
         }, world);
     }

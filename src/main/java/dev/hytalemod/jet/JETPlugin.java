@@ -8,29 +8,23 @@ import com.hypixel.hytale.component.ComponentType;
 import com.hypixel.hytale.server.core.asset.type.item.config.CraftingRecipe;
 import com.hypixel.hytale.server.core.asset.type.item.config.Item;
 import com.hypixel.hytale.server.core.asset.type.item.config.ItemDropList;
-import com.hypixel.hytale.server.core.event.events.ecs.ChangeGameModeEvent;
 import com.hypixel.hytale.server.core.event.events.entity.LivingEntityInventoryChangeEvent;
-import com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent;
 import com.hypixel.hytale.server.core.inventory.MaterialQuantity;
-import com.hypixel.hytale.server.core.io.adapter.PacketAdapters;
-import com.hypixel.hytale.server.core.io.adapter.PacketFilter;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
-import com.hypixel.hytale.server.core.universe.PlayerRef;
-import com.hypixel.hytale.protocol.GameMode;
 import com.hypixel.hytale.server.core.modules.interaction.interaction.config.Interaction;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import dev.hytalemod.jet.command.*;
+import dev.hytalemod.jet.component.JETKeybindComponent;
 import dev.hytalemod.jet.component.RecipeHudComponent;
 import dev.hytalemod.jet.config.JETConfig;
 import dev.hytalemod.jet.interaction.OpenJETInteraction;
-import dev.hytalemod.jet.filter.OKeyPacketFilter;
-import dev.hytalemod.jet.gui.JETGui;
 import dev.hytalemod.jet.registry.DropListRegistry;
 import dev.hytalemod.jet.registry.ItemRegistry;
 import dev.hytalemod.jet.registry.RecipeRegistry;
 import dev.hytalemod.jet.storage.BrowserStateStorage;
 import dev.hytalemod.jet.storage.PinnedItemsStorage;
+import dev.hytalemod.jet.system.AltKeyBind;
 import dev.hytalemod.jet.system.RecipeHudUpdateSystem;
 
 import java.io.FileWriter;
@@ -42,7 +36,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -63,12 +56,7 @@ public class JETPlugin extends JavaPlugin {
     private PinnedItemsStorage pinnedItemsStorage;
     private BrowserStateStorage browserStateStorage;
 
-    // O Key binding
     private JETConfig config;
-    private PacketFilter oKeyFilter;
-    private final Map<UUID, Long> lastTriggerTime = new ConcurrentHashMap<>();
-    private final Map<UUID, PlayerRef> pendingTriggers = new ConcurrentHashMap<>();
-    private static final long PENDING_TRIGGER_TIMEOUT_MS = 500L;
 
     public static Map<String, Item> ITEMS = new HashMap<>();
     public static Map<String, CraftingRecipe> RECIPES = new HashMap<>();
@@ -81,6 +69,7 @@ public class JETPlugin extends JavaPlugin {
     private final SimpleDateFormat logDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     private ComponentType<EntityStore, RecipeHudComponent> recipeHudComponentType;
+    private ComponentType<EntityStore, JETKeybindComponent> keybindComponentType;
 
 
     public JETPlugin(JavaPluginInit init) {
@@ -129,6 +118,13 @@ public class JETPlugin extends JavaPlugin {
         );
         RecipeHudComponent.init(recipeHudComponentType);
 
+        keybindComponentType = getEntityStoreRegistry().registerComponent(
+                JETKeybindComponent.class,
+                "jet:keybind",
+                JETKeybindComponent.CODEC
+        );
+        JETKeybindComponent.init(keybindComponentType);
+
         // Setup custom JET logger that writes to UserData/Logs/jet_logs
         setupJetLogger();
         itemRegistry = new ItemRegistry();
@@ -145,9 +141,8 @@ public class JETPlugin extends JavaPlugin {
         // Register commands
         getCommandRegistry().registerCommand(new JETCommand());
         getCommandRegistry().registerCommand(new JETPinnedCommand());
-        // WIP: getCommandRegistry().registerCommand(new JETSettingsCommand());
-        // WIP: getCommandRegistry().registerCommand(new JETBindCommand());
-        // WIP: getCommandRegistry().registerCommand(new JETRecipeHudCommand());
+        getCommandRegistry().registerCommand(new JETConfigCommand());
+
         // Register asset load events
         getEventRegistry().register(LoadedAssetsEvent.class, Item.class, JETPlugin::onItemsLoaded);
         getEventRegistry().register(LoadedAssetsEvent.class, CraftingRecipe.class, JETPlugin::onRecipesLoaded);
@@ -157,26 +152,19 @@ public class JETPlugin extends JavaPlugin {
         // Register custom interaction for Pex Glyph item
         Interaction.CODEC.register("OpenJET", OpenJETInteraction.class, OpenJETInteraction.CODEC);
 
-        // Setup O key binding if enabled
-        if (config != null && config.bindOKey) {
-            setupOKeyBinding();
-        }
+        // Register Alt key bind system
+        getEntityStoreRegistry().registerSystem(new AltKeyBind());
 
         log(Level.INFO, "[JET] Plugin enabled - v" + VERSION);
-        String keyBindInfo = (config != null && config.bindOKey) ? ", O key bound to /jet" : "";
+        String keyBindInfo = (config != null && config.bindAltKey) ? ", Alt key bound to /jet" : "";
         log(Level.INFO, "[JET] Use /jet or /j to open item browser" + keyBindInfo);
         log(Level.INFO, "[JET] Tip: Use '/jet <itemId>' to search directly (e.g. /jet Block_Stone)");
-
-
     }
 
 
     @Override
     protected void shutdown() {
         super.shutdown();
-        if (oKeyFilter != null) {
-            PacketAdapters.deregisterInbound(oKeyFilter);
-        }
         // Close JET log writer
         if (jetLogWriter != null) {
             jetLogWriter.close();
@@ -395,106 +383,11 @@ public class JETPlugin extends JavaPlugin {
         return config;
     }
 
-    // ==================== O Key Binding ====================
-
-    private void setupOKeyBinding() {
-        // Register packet filter to intercept O key presses
-        oKeyFilter = PacketAdapters.registerInbound(new OKeyPacketFilter(this));
-
-        // Listen for gamemode change events
-        getEventRegistry().registerGlobal(ChangeGameModeEvent.class, event -> {
-            if (event.getGameMode() == GameMode.Creative) {
-                PlayerRef playerRef = consumePendingTrigger();
-                if (playerRef != null && handleGameModeChangeEvent(playerRef)) {
-                    event.setCancelled(true);
-                }
-            }
-        });
-
-        // Clean up on disconnect
-        getEventRegistry().register(PlayerDisconnectEvent.class, event -> {
-            PlayerRef playerRef = event.getPlayerRef();
-            if (playerRef != null && playerRef.getUuid() != null) {
-                lastTriggerTime.remove(playerRef.getUuid());
-                pendingTriggers.remove(playerRef.getUuid());
-            }
-        });
-
-        log(Level.INFO, "[JET] O key binding enabled");
-    }
-
-    public boolean handleGameModeSwap(PlayerRef playerRef) {
-        if (playerRef != null && playerRef.getUuid() != null) {
-            pendingTriggers.put(playerRef.getUuid(), playerRef);
-        }
-        return false;
-    }
-
-    private boolean handleGameModeChangeEvent(PlayerRef playerRef) {
-        if (playerRef == null || config == null || !config.bindOKey) {
-            return false;
-        }
-
-        // Check if player has permission (only OPs or creative players)
-        if (!hasOKeyPermission(playerRef)) {
-            return false; // Let normal gamemode change happen
-        }
-
-        // Check if on cooldown
-        if (isOnCooldown(playerRef)) {
-            return true;
-        }
-
-        // Open JET browser - need to get Player and refs
-        // For now, just return true to cancel gamemode change
-        // TODO: Properly open GUI from PlayerRef
-        return true;
-    }
-
-    private boolean hasOKeyPermission(PlayerRef playerRef) {
-        if (playerRef == null) {
-            return false;
-        }
-
-        // If appliesOnOP is false, only allow for non-OPs
-        // If appliesOnOP is true, allow for everyone with creative mode access
-        try {
-            // Check if player has creative permission/gamemode
-            // For now, we assume if they pressed O key they have some level of access
-            // The config.appliesOnOP setting controls if OPs get the binding
-            return true; // Will be controlled by ChangeGameModeEvent access
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private PlayerRef consumePendingTrigger() {
-        // Just return the first pending trigger since we store PlayerRef now
-        if (pendingTriggers.isEmpty()) {
-            return null;
-        }
-
-        Map.Entry<UUID, PlayerRef> entry = pendingTriggers.entrySet().iterator().next();
-        pendingTriggers.remove(entry.getKey());
-        return entry.getValue();
-    }
-
-    private boolean isOnCooldown(PlayerRef playerRef) {
-        if (config.cooldownMs <= 0) {
-            return false;
-        }
-
-        long now = System.currentTimeMillis();
-        Long lastTime = lastTriggerTime.get(playerRef.getUuid());
-
-        if (lastTime != null && now - lastTime < config.cooldownMs) {
-            return true;
-        }
-
-        lastTriggerTime.put(playerRef.getUuid(), now);
-        return false;
-    }
     public ComponentType<EntityStore, RecipeHudComponent> getRecipeHudComponentType() {
         return recipeHudComponentType;
+    }
+
+    public ComponentType<EntityStore, JETKeybindComponent> getKeybindComponentType() {
+        return keybindComponentType;
     }
 }

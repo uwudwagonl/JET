@@ -1,0 +1,86 @@
+$C = "../Common.ui";
+
+$C.@PageOverlay {
+  $C.@Container {
+    Anchor: (Width: 600, Height: 350);
+
+    #Title {
+      Group {
+        $C.@Title {
+          @Text = "JET Settings";
+        }
+      }
+    }
+
+    #Content {
+      LayoutMode: Top;
+      Padding: (Full: 20);
+
+      Group #Settings {
+        LayoutMode: Top;
+        Padding: (Top: 10);
+
+        Group #BindAltKeySetting {
+          LayoutMode: Left;
+          Padding: (Bottom: 15);
+          Anchor: (Height: 30);
+
+          $C.@CheckBoxWithLabel #BindAltKeyCheck {
+            @Text = "Bind Alt (Walk) key to open JET";
+          }
+        }
+
+        Group #GiveButtonsSetting {
+          LayoutMode: Left;
+          Padding: (Bottom: 15);
+          Anchor: (Height: 30);
+
+          $C.@CheckBoxWithLabel #GiveButtonsCheck {
+            @Text = "Enable Give Item buttons (Creative/OP)";
+          }
+        }
+      }
+
+      Group #Buttons {
+        LayoutMode: Left;
+        Padding: (Top: 30);
+
+        Button #SaveButton {
+          Anchor: (Width: 130, Height: 40, Right: 10);
+          Background: (Color: #00aa00);
+          Style: (Hovered: (Background: #00cc00), Pressed: (Background: #009900));
+          LayoutMode: Left;
+          Padding: (Left: 12);
+
+          ItemIcon #SaveIcon {
+            Anchor: (Width: 24, Height: 24, Right: 6);
+            Visible: true;
+          }
+
+          Label {
+            Text: "Save";
+            Style: (FontSize: 15, TextColor: #ffffff, RenderBold: true, VerticalAlignment: Center);
+          }
+        }
+
+        Button #CancelButton {
+          Anchor: (Width: 130, Height: 40);
+          Background: (Color: #aa0000);
+          Style: (Hovered: (Background: #cc0000), Pressed: (Background: #990000));
+          LayoutMode: Left;
+          Padding: (Left: 12);
+
+          ItemIcon #CancelIcon {
+            Anchor: (Width: 24, Height: 24, Right: 6);
+            Visible: true;
+          }
+
+          Label {
+            Text: "Cancel";
+            Style: (FontSize: 15, TextColor: #ffffff, RenderBold: true, VerticalAlignment: Center);
+          }
+        }
+      }
+    }
+  }
+}
