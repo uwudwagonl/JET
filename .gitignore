@@ -56,13 +56,12 @@ desktop.ini
 *.swp
 *~
 
-# claude
+# Claude
+CLAUDE.md
+.claude/
 *.claude
 
 # nul file i cant delete
 *.nul
 *nul
 nul
-
-# pretty sure this saves api keys sometimes lol
-*.claude
