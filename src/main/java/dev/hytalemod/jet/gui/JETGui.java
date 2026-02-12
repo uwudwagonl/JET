@@ -125,7 +125,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 } catch (IllegalArgumentException ignored) {}
             }
         }
-        // Restore history
         this.viewHistory.clear();
         if (s.viewHistory != null) {
             for (String itemId : s.viewHistory) {
@@ -142,7 +141,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Gui.ui");
 
-        // Set static icon ItemIds for all icon buttons
         cmd.set("#ClearFilters #ClearFiltersIcon.ItemId", "JET_Icon_Clear");
         cmd.set("#ItemPagination #PrevItemPage #PrevItemPageIcon.ItemId", "JET_Icon_Arrow_Left");
         cmd.set("#ItemPagination #NextItemPage #NextItemPageIcon.ItemId", "JET_Icon_Arrow_Right");
@@ -152,6 +150,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         cmd.set("#RecipePanel #AdvancedInfoSection #ToggleAdvancedInfo #ToggleAdvancedInfoIcon.ItemId", "JET_Icon_Arrow_Right");
         cmd.set("#RecipePagination #PrevRecipe #PrevRecipeIcon.ItemId", "JET_Icon_Arrow_Left");
         cmd.set("#RecipePagination #NextRecipe #NextRecipeIcon.ItemId", "JET_Icon_Arrow_Right");
+        cmd.set("#Title #SettingsButton #SettingsIcon.ItemId", "JET_Icon_Settings");
 
         events.addEventBinding(
                 CustomUIEventBindingType.ValueChanged,
@@ -160,7 +159,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 false
         );
 
-        // Checkbox bindings for show hidden items and salvager recipes
         events.addEventBinding(
                 CustomUIEventBindingType.ValueChanged,
                 "#ShowHiddenItems #CheckBox",
@@ -175,7 +173,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 false
         );
 
-        // Populate grid layout dropdown
         List<com.hypixel.hytale.server.core.ui.DropdownEntryInfo> gridLayouts = new ArrayList<>();
         for (int cols = 5; cols <= 10; cols++) {
             for (int rows = 5; rows <= 10; rows++) {
@@ -190,11 +187,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         cmd.set("#GridLayout.Value", gridColumns + "x" + gridRows);
         cmd.set("#SearchInput.Value", searchQuery != null ? searchQuery : "");
 
-        // Set checkbox states to match defaults
         cmd.set("#ShowHiddenItems #CheckBox.Value", showHiddenItems);
         cmd.set("#ShowSalvager #CheckBox.Value", showSalvagerRecipes);
 
-        // Grid layout dropdown binding
         events.addEventBinding(
                 CustomUIEventBindingType.ValueChanged,
                 "#GridLayout",
@@ -202,7 +197,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 false
         );
 
-        // Toggle mode button - switches to craft mode
         events.addEventBinding(
                 CustomUIEventBindingType.Activating,
                 "#RecipePanel #ToggleModeButton",
@@ -210,7 +204,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 false
         );
 
-        // Uses button - switches to usage mode
         events.addEventBinding(
                 CustomUIEventBindingType.Activating,
                 "#RecipePanel #UsesButton",
@@ -218,7 +211,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 false
         );
 
-        // Obtained From button - switches to drops mode
         events.addEventBinding(
                 CustomUIEventBindingType.Activating,
                 "#RecipePanel #ObtainedFromButton",
@@ -226,7 +218,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 false
         );
 
-        // Pin button
         events.addEventBinding(
                 CustomUIEventBindingType.Activating,
                 "#RecipePanel #PinButton",
@@ -234,15 +225,12 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 false
         );
 
-        // Pagination for recipes
         events.addEventBinding(CustomUIEventBindingType.Activating, "#PrevRecipe", EventData.of("PageChange", "prev"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#NextRecipe", EventData.of("PageChange", "next"), false);
 
-        // Pagination for item list
         events.addEventBinding(CustomUIEventBindingType.Activating, "#PrevItemPage", EventData.of("ItemPageChange", "prev"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#NextItemPage", EventData.of("ItemPageChange", "next"), false);
 
-        // Category filter buttons
         events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterTool", EventData.of("CategoryFilter", "TOOL"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterWeapon", EventData.of("CategoryFilter", "WEAPON"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterArmor", EventData.of("CategoryFilter", "ARMOR"), false);
@@ -251,10 +239,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterCraftable", EventData.of("CategoryFilter", "CRAFTABLE"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterNonCraftable", EventData.of("CategoryFilter", "NON_CRAFTABLE"), false);
 
-        // Clear filters button
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ClearFilters", EventData.of("ClearFilters", "true"), false);
 
-        // History bar buttons
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#SettingsButton", EventData.of("OpenSettings", "true"), false);
+
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ToggleHistory", EventData.of("ToggleHistory", "toggle"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#RecipePanel #AdvancedInfoSection #ToggleAdvancedInfo", EventData.of("ToggleAdvancedInfo", "toggle"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ClearHistory", EventData.of("ClearHistory", "clear"), false);
@@ -268,10 +256,18 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     public void handleDataEvent(Ref<EntityStore> ref, Store<EntityStore> store, GuiData data) {
         super.handleDataEvent(ref, store, data);
 
-        // Handle opening drop source (MobInfoGui) - must be first to avoid stale UI commands
-        if (data.openDropSource != null && !data.openDropSource.isEmpty()) {
-            JETPlugin.getInstance().log(Level.INFO, "[JET] Opening MobInfoGui for drop source: " + data.openDropSource);
+        if (data.openSettings != null) {
+            com.hypixel.hytale.server.core.entity.entities.Player player = store.getComponent(ref, com.hypixel.hytale.server.core.entity.entities.Player.getComponentType());
+            close();
 
+            if (player != null) {
+                java.util.concurrent.CompletableFuture.delayedExecutor(200, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    .execute(() -> com.hypixel.hytale.server.core.command.system.CommandManager.get().handleCommand(player, "jetconfig"));
+            }
+            return;
+        }
+
+        if (data.openDropSource != null && !data.openDropSource.isEmpty()) {
             BrowserState currentState = captureState();
             close();
 
@@ -297,12 +293,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.searchQuery = data.searchQuery.trim();
             this.itemPage = 0; // Reset to first page on search
             needsItemUpdate = true;
-            // Deselect item when search changes
             this.selectedItem = null;
             needsRecipeUpdate = true;
         }
 
-        // Handle category filter toggle
         if (data.categoryFilter != null && !data.categoryFilter.isEmpty()) {
             try {
                 ItemCategory category = ItemCategory.valueOf(data.categoryFilter);
@@ -316,11 +310,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 needsItemUpdate = true;
                 needsRecipeUpdate = true;
             } catch (IllegalArgumentException e) {
-                // Invalid category, ignore
             }
         }
 
-        // Handle clear filters
         if (data.clearFilters != null && "true".equals(data.clearFilters)) {
             if (!activeFilters.isEmpty() || (modFilter != null && !modFilter.isEmpty())) {
                 activeFilters.clear();
@@ -333,7 +325,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
         }
 
-        // Handle sort mode change
         if (data.sortMode != null && !data.sortMode.equals(this.sortMode)) {
             this.sortMode = data.sortMode;
             this.itemPage = 0;
@@ -342,7 +333,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             needsRecipeUpdate = true;
         }
 
-        // Handle mod filter change
         if (data.modFilter != null && !data.modFilter.equals(this.modFilter)) {
             this.modFilter = data.modFilter;
             this.itemPage = 0;
@@ -351,7 +341,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             needsRecipeUpdate = true;
         }
 
-        // Handle grid layout change
         if (data.gridLayout != null) {
             try {
                 String[] parts = data.gridLayout.split("x");
@@ -366,7 +355,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             } catch (Exception ignored) {}
         }
 
-        // Handle show hidden items checkbox
         if (data.showHiddenItems != null && data.showHiddenItems != this.showHiddenItems) {
             this.showHiddenItems = data.showHiddenItems;
             this.itemPage = 0;
@@ -375,23 +363,19 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             needsRecipeUpdate = true;
         }
 
-        // Handle show salvager recipes checkbox
         if (data.showSalvagerRecipes != null && data.showSalvagerRecipes != this.showSalvagerRecipes) {
             this.showSalvagerRecipes = data.showSalvagerRecipes;
             needsRecipeUpdate = true;
         }
 
-        // Handle give item (only if config enabled)
         if (JETPlugin.getInstance().getConfig().enableGiveButtons && data.giveItem != null && !data.giveItem.isEmpty()) {
             giveItemToPlayer(ref, store, data.giveItem, false);
         }
 
-        // Handle give item stack (only if config enabled)
         if (JETPlugin.getInstance().getConfig().enableGiveButtons && data.giveItemStack != null && !data.giveItemStack.isEmpty()) {
             giveItemToPlayer(ref, store, data.giveItemStack, true);
         }
 
-        // Handle item page navigation
         if (data.itemPageChange != null) {
             if ("prev".equals(data.itemPageChange) && itemPage > 0) {
                 itemPage--;
@@ -411,7 +395,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             addToHistory(data.selectedItem);
         }
 
-        // Handle toggle mode - now separate buttons for craft/usage/drops
         if (data.toggleMode != null && !data.toggleMode.isEmpty()) {
             if ("craft".equals(data.toggleMode) || "usage".equals(data.toggleMode) || "drops".equals(data.toggleMode)) {
                 this.activeSection = data.toggleMode;
@@ -430,7 +413,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             needsRecipeUpdate = true;
         }
 
-        // Handle pin/unpin action
         if (data.pinAction != null && "toggle".equals(data.pinAction) && this.selectedItem != null) {
             UUID playerUuid = playerRef.getUuid();
             boolean isPinned = JETPlugin.getInstance().getPinnedItemsStorage().togglePin(playerUuid, this.selectedItem);
@@ -473,7 +455,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
         }
 
-        // Handle history toggle
         if (data.toggleHistory != null && "toggle".equals(data.toggleHistory)) {
             historyCollapsed = !historyCollapsed;
             UICommandBuilder cmd = new UICommandBuilder();
@@ -482,7 +463,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             sendUpdate(cmd, events, false);
         }
 
-        // Handle advanced info toggle
         if (data.toggleAdvancedInfo != null && "toggle".equals(data.toggleAdvancedInfo)) {
             advancedInfoCollapsed = !advancedInfoCollapsed;
             UICommandBuilder cmd = new UICommandBuilder();
@@ -491,7 +471,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             sendUpdate(cmd, events, false);
         }
 
-        // Handle clear history
         if (data.clearHistory != null && "clear".equals(data.clearHistory)) {
             viewHistory.clear();
             UICommandBuilder cmd = new UICommandBuilder();
@@ -500,7 +479,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             sendUpdate(cmd, events, false);
         }
 
-        // Handle history item click
         if (data.historyItemClick != null && !data.historyItemClick.isEmpty()) {
             this.selectedItem = data.historyItemClick;
             this.craftPage = 0;
@@ -1802,28 +1780,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                     Object interactions = interactionsField.get(item);
 
                     if (interactions != null && interactions instanceof java.util.Map) {
-                        stats.append("\n");
                         java.util.Map<?, ?> interactionMap = (java.util.Map<?, ?>) interactions;
-
-                        // DEBUG: Show first interaction's structure
-                        if (!interactionMap.isEmpty()) {
-                            Object firstInteraction = interactionMap.values().iterator().next();
-                            if (firstInteraction != null) {
-                                stats.append("[DEBUG] First interaction class: ").append(firstInteraction.getClass().getName()).append("\n");
-                                stats.append("[DEBUG] Fields:\n");
-                                for (java.lang.reflect.Field f : firstInteraction.getClass().getDeclaredFields()) {
-                                    stats.append("  - ").append(f.getName()).append(" (").append(f.getType().getSimpleName()).append(")\n");
-                                }
-                                stats.append("[DEBUG] Methods (sample):\n");
-                                int methodCount = 0;
-                                for (Method m : firstInteraction.getClass().getMethods()) {
-                                    if (!m.getName().startsWith("get") && !m.getName().startsWith("is")) continue;
-                                    stats.append("  - ").append(m.getName()).append("()\n");
-                                    if (++methodCount >= 15) break;
-                                }
-                                stats.append("\n");
-                            }
-                        }
 
                         for (java.util.Map.Entry<?, ?> entry : interactionMap.entrySet()) {
                             stats.append("  ").append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
@@ -2113,6 +2070,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("OpenDropSource", Codec.STRING), (d, v) -> d.openDropSource = v, d -> d.openDropSource)
                 .addField(new KeyedCodec<>("PinToHud", Codec.STRING), (d, v) -> d.pinToHud = v, d -> d.pinToHud)
                 .addField(new KeyedCodec<>("ToggleAdvancedInfo", Codec.STRING), (d, v) -> d.toggleAdvancedInfo = v, d -> d.toggleAdvancedInfo)
+                .addField(new KeyedCodec<>("OpenSettings", Codec.STRING), (d, v) -> d.openSettings = v, d -> d.openSettings)
                 .build();
 
         private String searchQuery;
@@ -2136,6 +2094,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         private String historyItemClick;
         private String openDropSource;
         private String toggleAdvancedInfo;
+        private String openSettings;
 
         public GuiData() {}
     }

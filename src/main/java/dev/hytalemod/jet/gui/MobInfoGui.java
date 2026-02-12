@@ -38,8 +38,6 @@ public class MobInfoGui extends InteractiveCustomUIPage<MobInfoGui.GuiData> {
         this.selectedItemId = selectedItemId;
         this.previousBrowserState = previousBrowserState;
         this.parsedDrops = new ArrayList<>();
-
-        JETPlugin.getInstance().log(Level.INFO, "[JET] Opening MobInfoGui for dropList: " + dropListId + ", item: " + selectedItemId);
     }
 
     @Override
@@ -152,7 +150,6 @@ public class MobInfoGui extends InteractiveCustomUIPage<MobInfoGui.GuiData> {
         super.handleDataEvent(ref, store, data);
 
         if (data.selectedItem != null && !data.selectedItem.isEmpty()) {
-            JETPlugin.getInstance().log(Level.INFO, "[JET] Item clicked in MobInfo: " + data.selectedItem);
             close();
 
             BrowserState newState = previousBrowserState != null ? previousBrowserState : new BrowserState();
@@ -178,20 +175,15 @@ public class MobInfoGui extends InteractiveCustomUIPage<MobInfoGui.GuiData> {
         // Use the DropListRegistry which indexes by dropList.getId()
         ItemDropList dropList = JETPlugin.getInstance().getDropListRegistry().get(dropListId);
         if (dropList == null) {
-            JETPlugin.getInstance().log(Level.WARNING, "[JET] DropList not found in registry: " + dropListId);
             return;
         }
 
         try {
             Object container = dropList.getContainer();
             if (container == null) {
-                JETPlugin.getInstance().log(Level.WARNING, "[JET] Container is null for: " + dropListId);
                 return;
             }
 
-            JETPlugin.getInstance().log(Level.INFO, "[JET] Container type: " + container.getClass().getName());
-
-            // Try getAllDrops method first - this is what works in DropListRegistry
             try {
                 Method getAllDropsMethod = container.getClass().getMethod("getAllDrops", List.class);
                 List<Object> dropsList = new ArrayList<>();
@@ -205,23 +197,17 @@ public class MobInfoGui extends InteractiveCustomUIPage<MobInfoGui.GuiData> {
                 }
 
                 if (drops != null && !drops.isEmpty()) {
-                    JETPlugin.getInstance().log(Level.INFO, "[JET] getAllDrops returned " + drops.size() + " items");
                     for (Object drop : drops) {
                         extractDropInfo(drop);
                     }
                 }
             } catch (NoSuchMethodException e) {
-                JETPlugin.getInstance().log(Level.INFO, "[JET] No getAllDrops method, trying alternatives");
-                // Try alternative extraction methods
                 tryAlternativeExtraction(container);
             }
 
         } catch (Exception e) {
-            JETPlugin.getInstance().log(Level.WARNING, "[JET] Error parsing drop list: " + e.getMessage());
-            e.printStackTrace();
+            // silently ignore
         }
-
-        JETPlugin.getInstance().log(Level.INFO, "[JET] Parsed " + parsedDrops.size() + " drops from " + dropListId);
     }
 
     private void extractDropInfo(Object drop) {
@@ -271,7 +257,7 @@ public class MobInfoGui extends InteractiveCustomUIPage<MobInfoGui.GuiData> {
             parsedDrops.add(new DropEntry(itemId, quantityMin, quantityMax));
 
         } catch (Exception e) {
-            JETPlugin.getInstance().log(Level.WARNING, "[JET] Error extracting drop info: " + e.getMessage());
+            // silently ignore
         }
     }
 
