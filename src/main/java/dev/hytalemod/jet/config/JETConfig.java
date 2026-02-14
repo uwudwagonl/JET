@@ -10,6 +10,13 @@ public class JETConfig {
     // Give buttons (Creative/OP only) - off by default
     public boolean enableGiveButtons = false;
 
+    // Background image for JET browser (item ID that contains the background texture)
+    // Options: "none", "JET_Bg_Default", "JET_Bg_Dark", "JET_Bg_Parchment", "JET_Bg_Stone", or custom item ID
+    public String backgroundImage = "none";
+
+    // Background opacity (0.0 to 1.0)
+    public float backgroundOpacity = 0.8f;
+
     public JETConfig() {
     }
 }

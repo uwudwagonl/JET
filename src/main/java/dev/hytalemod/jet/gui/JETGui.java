@@ -141,6 +141,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Gui.ui");
 
+
         cmd.set("#ClearFilters #ClearFiltersIcon.ItemId", "JET_Icon_Clear");
         cmd.set("#ItemPagination #PrevItemPage #PrevItemPageIcon.ItemId", "JET_Icon_Arrow_Left");
         cmd.set("#ItemPagination #NextItemPage #NextItemPageIcon.ItemId", "JET_Icon_Arrow_Right");
@@ -1122,6 +1123,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
             int idx = i - start;
             cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
+            cmd.set("#InputIcon.ItemId", "JET_Input_Icon");
+            cmd.set("#OutputIcon.ItemId", "JET_Output_Icon");
             String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
 
             buildRecipeDisplay(cmd, events, recipe, rSel, ref);
@@ -1165,6 +1168,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
             int idx = i - start;
             cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
+            cmd.set("#InputIcon.ItemId", "JET_Input_Icon");
+            cmd.set("#OutputIcon.ItemId", "JET_Output_Icon");
             String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
 
             buildRecipeDisplay(cmd, events, recipe, rSel, ref);
@@ -2043,6 +2048,10 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
         return result;
     }
+
+    /**
+     * Apply background image from config settings
+     */
 
     public static class GuiData {
         private String pinToHud;

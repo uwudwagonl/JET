@@ -2,7 +2,7 @@ $C = "../Common.ui";
 
 $C.@PageOverlay {
   $C.@Container {
-    Anchor: (Width: 600, Height: 300);
+    Anchor: (Width: 600, Height: 420);
 
     #Title {
       Group {
@@ -37,6 +37,60 @@ $C.@PageOverlay {
 
           $C.@CheckBoxWithLabel #GiveButtonsCheck {
             @Text = "Enable Give Item buttons (Creative/OP)";
+          }
+        }
+
+        Group #BackgroundSetting {
+          LayoutMode: Left;
+          Padding: (Bottom: 15);
+          Anchor: (Height: 35);
+
+          Label {
+            Text: "Background Image:";
+            Style: (FontSize: 14, TextColor: #ffffff, VerticalAlignment: Center);
+            Padding: (Right: 10);
+          }
+
+          $C.@DropdownBox #BackgroundDropdown {
+            Anchor: (Width: 200, Height: 28);
+          }
+        }
+
+        Group #OpacitySetting {
+          LayoutMode: Left;
+          Padding: (Bottom: 15);
+          Anchor: (Height: 35);
+
+          Label {
+            Text: "Background Opacity:";
+            Style: (FontSize: 14, TextColor: #ffffff, VerticalAlignment: Center);
+            Padding: (Right: 10);
+          }
+
+          $C.@DropdownBox #OpacityDropdown {
+            Anchor: (Width: 100, Height: 28);
+          }
+        }
+
+        Group #BackgroundPreview {
+          LayoutMode: Left;
+          Padding: (Bottom: 10);
+          Anchor: (Height: 60);
+
+          Label {
+            Text: "Preview:";
+            Style: (FontSize: 12, TextColor: #888888);
+            Padding: (Right: 10);
+          }
+
+          Group #PreviewContainer {
+            Anchor: (Width: 100, Height: 50);
+            Background: (Color: #1a1a1a);
+
+            ItemIcon #PreviewImage {
+              Anchor: (Full: 0);
+              Visible: false;
+            }
           }
         }
       }

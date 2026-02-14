@@ -1,0 +1,10 @@
+{
+	"TranslationProperties": { "Name": "JET Background - Dark" },
+	"MaxStack": 1,
+	"Model": "Items/Weapons/Spellbook/Grimoire.blockymodel",
+	"Texture": "Items/Weapons/Spellbook/Grimoire_Purple_Texture.png",
+	"Icon": "Icons/Items/JET_Bg_Dark.png",
+	"IconProperties": { "Scale": 1.0, "Rotation": [0, 0, 0], "Translation": [0, 0] },
+	"UsePlayerAnimations": false,
+	"Quality": "Developer"
+}

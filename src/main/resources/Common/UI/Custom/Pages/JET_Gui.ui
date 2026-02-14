@@ -7,7 +7,6 @@ $C = "../Common.ui";
     Default: (LabelStyle: (TextColor: #18E314, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
 );
 $C.@PageOverlay {
-
   $C.@Container {
     Anchor: (Width: 1400, Height: 700);
 
@@ -39,10 +38,11 @@ $C.@PageOverlay {
       }
     }
 
-    #Content {
-      LayoutMode: Left;
+      Group #MainContent {
+        Anchor: (Full: 0);
+        LayoutMode: Left;
 
-      Group #ItemSection {
+        Group #ItemSection {
         FlexWeight: 2;
         LayoutMode: Top;
         Padding: (Left: 10, Right: 5);
@@ -512,6 +512,7 @@ $C.@PageOverlay {
           }
         }
       }
+      }
     }
+
   }
-}

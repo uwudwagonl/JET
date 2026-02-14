@@ -26,13 +26,9 @@ Group {
     LayoutMode: Left;
     Padding: (Top: 4);
 
-    Label {
-      Style: (
-        FontSize: 11,
-        TextColor: #ff8888
-      );
-      Text: "In:";
-      Anchor: (Width: 30);
+    ItemIcon #InputIcon {
+        Anchor: (Width: 30, Height: 30);
+        Visible: true;
     }
 
     Group #InputItems {
@@ -45,13 +41,9 @@ Group {
     LayoutMode: Left;
     Padding: (Top: 6);
 
-    Label {
-      Style: (
-        FontSize: 11,
-        TextColor: #88ff88
-      );
-      Text: "Out:";
-      Anchor: (Width: 30);
+    ItemIcon #OutputIcon {
+        Anchor: (Width: 30, Height: 30);
+        Visible: true;
     }
 
     Group #OutputItems {
