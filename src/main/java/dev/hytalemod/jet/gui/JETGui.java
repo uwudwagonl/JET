@@ -1123,8 +1123,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
             int idx = i - start;
             cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
-            cmd.set("#InputIcon.ItemId", "JET_Input_Icon");
-            cmd.set("#OutputIcon.ItemId", "JET_Output_Icon");
+            cmd.set("#InputIcon.ItemId", "JET_Icon_Input");
+            cmd.set("#OutputIcon.ItemId", "JET_Icon_Output");
             String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
 
             buildRecipeDisplay(cmd, events, recipe, rSel, ref);
@@ -1168,8 +1168,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
             int idx = i - start;
             cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_RecipeEntry.ui");
-            cmd.set("#InputIcon.ItemId", "JET_Input_Icon");
-            cmd.set("#OutputIcon.ItemId", "JET_Output_Icon");
+            cmd.set("#InputIcon.ItemId", "JET_Icon_Input");
+            cmd.set("#OutputIcon.ItemId", "JET_Icon_Output");
+
             String rSel = "#RecipePanel #RecipeListContainer #RecipeList[" + idx + "]";
 
             buildRecipeDisplay(cmd, events, recipe, rSel, ref);

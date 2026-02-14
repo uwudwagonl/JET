@@ -3,7 +3,7 @@
 	"MaxStack": 1,
 	"Model": "Items/Weapons/Spellbook/Grimoire.blockymodel",
 	"Texture": "Items/Weapons/Spellbook/Grimoire_Purple_Texture.png",
-	"Icon": "Icons/Items/JET_Output_Icon.png",
+	"Icon": "Icons/Items/JET_Output.png",
 	"IconProperties": { "Scale": 1.0, "Rotation": [0, 0, 0], "Translation": [0, 0] },
 	"UsePlayerAnimations": false
 }
