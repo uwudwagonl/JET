@@ -25,6 +25,7 @@ public class BrowserState {
     public List<String> viewHistory = new ArrayList<>();
     public boolean historyCollapsed = false;
     public boolean advancedInfoCollapsed = true;
+    public boolean statsCollapsed = false;
 
     public BrowserState() {}
 }

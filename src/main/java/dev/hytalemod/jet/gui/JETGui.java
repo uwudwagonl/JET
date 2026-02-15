@@ -71,6 +71,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     private LinkedList<String> viewHistory; // Recently viewed items
     private boolean historyCollapsed; // Whether history bar is collapsed
     private boolean advancedInfoCollapsed; // Whether advanced info section is collapsed
+    private boolean statsCollapsed; // Whether item stats section is collapsed
     private static final int MAX_HISTORY_SIZE = 20;
 
     public JETGui(PlayerRef playerRef, CustomPageLifetime lifetime, String initialSearch, BrowserState saved) {
@@ -79,6 +80,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         this.viewHistory = new LinkedList<>();
         this.historyCollapsed = false;
         this.advancedInfoCollapsed = true; // Collapsed by default
+        this.statsCollapsed = false; // Expanded by default
 
         if (saved != null) {
             applySavedState(saved);
@@ -135,6 +137,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
         this.historyCollapsed = s.historyCollapsed;
         this.advancedInfoCollapsed = s.advancedInfoCollapsed;
+        this.statsCollapsed = s.statsCollapsed;
     }
 
     @Override
@@ -149,6 +152,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         cmd.set("#HistoryBar #ClearHistory #ClearHistoryIcon.ItemId", "JET_Icon_Clear");
         cmd.set("#RecipePanel #PinToHudButton #HudIcon.ItemId", "JET_Icon_Hud");
         cmd.set("#RecipePanel #AdvancedInfoSection #ToggleAdvancedInfo #ToggleAdvancedInfoIcon.ItemId", "JET_Icon_Arrow_Right");
+        cmd.set("#RecipePanel #ItemStatsSection #ToggleStats #ToggleStatsIcon.ItemId", statsCollapsed ? "JET_Icon_Arrow_Right" : "JET_Icon_Chevron_Down");
         cmd.set("#RecipePagination #PrevRecipe #PrevRecipeIcon.ItemId", "JET_Icon_Arrow_Left");
         cmd.set("#RecipePagination #NextRecipe #NextRecipeIcon.ItemId", "JET_Icon_Arrow_Right");
         cmd.set("#Title #SettingsButton #SettingsIcon.ItemId", "JET_Icon_Settings");
@@ -246,6 +250,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ToggleHistory", EventData.of("ToggleHistory", "toggle"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#RecipePanel #AdvancedInfoSection #ToggleAdvancedInfo", EventData.of("ToggleAdvancedInfo", "toggle"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#RecipePanel #ItemStatsSection #ToggleStats", EventData.of("ToggleStats", "toggle"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ClearHistory", EventData.of("ClearHistory", "clear"), false);
 
         buildItemList(ref, cmd, events, store);
@@ -472,6 +477,14 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             sendUpdate(cmd, events, false);
         }
 
+        if (data.toggleStats != null && "toggle".equals(data.toggleStats)) {
+            statsCollapsed = !statsCollapsed;
+            UICommandBuilder cmd = new UICommandBuilder();
+            UIEventBuilder events = new UIEventBuilder();
+            buildRecipePanel(ref, cmd, events, store);
+            sendUpdate(cmd, events, false);
+        }
+
         if (data.clearHistory != null && "clear".equals(data.clearHistory)) {
             viewHistory.clear();
             UICommandBuilder cmd = new UICommandBuilder();
@@ -550,6 +563,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         s.viewHistory = new ArrayList<>(viewHistory);
         s.historyCollapsed = historyCollapsed;
         s.advancedInfoCollapsed = advancedInfoCollapsed;
+        s.statsCollapsed = statsCollapsed;
         return s;
     }
 
@@ -1864,8 +1878,11 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         } catch (Exception ignored) {}
 
         if (hasStats) {
-            cmd.set("#RecipePanel #ItemStatsSection #ItemStats.TextSpans", Message.raw(stats.toString()));
             cmd.set("#RecipePanel #ItemStatsSection.Visible", true);
+            cmd.set("#RecipePanel #ItemStatsSection #StatsContent.Visible", !statsCollapsed);
+            cmd.set("#RecipePanel #ItemStatsSection #StatsContent #ItemStats.TextSpans", Message.raw(stats.toString()));
+            String chevronItem = statsCollapsed ? "JET_Icon_Arrow_Right" : "JET_Icon_Chevron_Down";
+            cmd.set("#RecipePanel #ItemStatsSection #ToggleStats #ToggleStatsIcon.ItemId", chevronItem);
         } else {
             cmd.set("#RecipePanel #ItemStatsSection.Visible", false);
         }
@@ -2080,6 +2097,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("OpenDropSource", Codec.STRING), (d, v) -> d.openDropSource = v, d -> d.openDropSource)
                 .addField(new KeyedCodec<>("PinToHud", Codec.STRING), (d, v) -> d.pinToHud = v, d -> d.pinToHud)
                 .addField(new KeyedCodec<>("ToggleAdvancedInfo", Codec.STRING), (d, v) -> d.toggleAdvancedInfo = v, d -> d.toggleAdvancedInfo)
+                .addField(new KeyedCodec<>("ToggleStats", Codec.STRING), (d, v) -> d.toggleStats = v, d -> d.toggleStats)
                 .addField(new KeyedCodec<>("OpenSettings", Codec.STRING), (d, v) -> d.openSettings = v, d -> d.openSettings)
                 .build();
 
@@ -2104,6 +2122,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         private String historyItemClick;
         private String openDropSource;
         private String toggleAdvancedInfo;
+        private String toggleStats;
         private String openSettings;
 
         public GuiData() {}

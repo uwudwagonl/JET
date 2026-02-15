@@ -53,9 +53,7 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Gui.ui");
 
-        JETPlugin.getInstance().log(java.util.logging.Level.INFO, "[JET] Opening Pinned Items GUI for " + playerRef.getUuid());
 
-        cmd.set("#SearchHint.Visible", false);
         cmd.set("#SearchInput.Visible", false);
         cmd.set("#FilterSection.Visible", false);
         cmd.set("#OptionsBar.Visible", false);

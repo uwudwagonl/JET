@@ -24,13 +24,24 @@
 			]
 		}
 	},
-	"Recipe" : {
+	"Recipe": {
+		"TimeSeconds": 1,
+		"KnowledgeRequired": false,
 		"Input": [
 			{
-				"ItemId": "Block_Stone",
+				"ItemId": "Rubble_Stone",
 				"Quantity": 4
 			}
 		],
-		"BenchRequirement" : []
+		"BenchRequirement": [
+			{
+				"Type": "Crafting",
+				"Categories": [
+					"Tools"
+				],
+				"Id": "Fieldcraft",
+				"RequiredTierLevel": 0
+			}
+		]
 	}
 }

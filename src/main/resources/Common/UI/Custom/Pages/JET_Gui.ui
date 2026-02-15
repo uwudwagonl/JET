@@ -38,11 +38,10 @@ $C.@PageOverlay {
       }
     }
 
-      Group #MainContent {
-        Anchor: (Full: 0);
-        LayoutMode: Left;
+    #Content {
+      LayoutMode: Left;
 
-        Group #ItemSection {
+      Group #ItemSection {
         FlexWeight: 2;
         LayoutMode: Top;
         Padding: (Left: 10, Right: 5);
@@ -356,11 +355,40 @@ $C.@PageOverlay {
             Padding: (Top: 10);
             Visible: false;
 
-            Label #ItemStats {
-              Style: (
-                FontSize: 11,
-                TextColor: #aaccff
-              );
+            Group #StatsHeader {
+              LayoutMode: Left;
+              Anchor: (Height: 18);
+              Padding: (Bottom: 3);
+
+              Button #ToggleStats {
+                Anchor: (Width: 18, Height: 18);
+                Style: (Hovered: (Background: #253550(0.8)));
+                LayoutMode: Middle;
+
+                ItemIcon #ToggleStatsIcon {
+                  Anchor: (Width: 16, Height: 16);
+                  Visible: true;
+                }
+              }
+
+              Label #StatsLabel {
+                Text: "Item Stats";
+                Style: (FontSize: 12, TextColor: #aaccff, VerticalAlignment: Center, RenderBold: true);
+                Padding: (Left: 3);
+              }
+            }
+
+            Group #StatsContent {
+              LayoutMode: Top;
+              Padding: (Top: 5, Left: 5);
+              Visible: true;
+
+              Label #ItemStats {
+                Style: (
+                  FontSize: 11,
+                  TextColor: #aaccff
+                );
+              }
             }
           }
 
@@ -512,7 +540,6 @@ $C.@PageOverlay {
           }
         }
       }
-      }
     }
-
   }
+}

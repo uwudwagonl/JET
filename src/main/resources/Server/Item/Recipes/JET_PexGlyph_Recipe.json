@@ -1,0 +1,24 @@
+{
+  "TimeSeconds": 1,
+  "KnowledgeRequired": false,
+  "Input": [
+    {
+      "ItemId": "Rubble_Stone",
+      "Quantity": 4
+    }
+  ],
+  "PrimaryOutput": {
+    "ItemId": "JET_PexGlyph",
+    "Quantity": 1
+  },
+  "BenchRequirement": [
+    {
+      "Type": "Crafting",
+      "Categories": [
+        "Tools"
+      ],
+      "Id": "Fieldcraft",
+      "RequiredTierLevel": 0
+    }
+  ]
+}

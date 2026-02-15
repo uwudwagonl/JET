@@ -40,6 +40,16 @@ $C.@PageOverlay {
           }
         }
 
+        Group #DisableJetCommandSetting {
+          LayoutMode: Left;
+          Padding: (Bottom: 15);
+          Anchor: (Height: 30);
+
+          $C.@CheckBoxWithLabel #DisableJetCommandCheck {
+            @Text = "Disable /jet command (Pex Glyph only) [OP]";
+          }
+        }
+
         Group #BackgroundSetting {
           LayoutMode: Left;
           Padding: (Bottom: 15);

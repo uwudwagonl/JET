@@ -11,6 +11,7 @@ import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import com.hypixel.hytale.server.core.Message;
 import dev.hytalemod.jet.JETPlugin;
 import dev.hytalemod.jet.gui.JETGui;
 import dev.hytalemod.jet.storage.BrowserState;
@@ -51,6 +52,11 @@ public class JETCommand extends AbstractCommand {
             PlayerRef playerRef = (PlayerRef) store.getComponent(ref, PlayerRef.getComponentType());
 
             if (playerRef != null) {
+                if (JETPlugin.getInstance().getConfig().disableJetCommand) {
+                    playerRef.sendMessage(Message.raw("[JET] The /jet command is disabled on this server. Craft a Pex Glyph and right-click it to open the browser.").color("#FFAA00"));
+                    return;
+                }
+
                 BrowserState saved = JETPlugin.getInstance().getBrowserStateStorage().getState(playerRef.getUuid());
                 JETGui gui = new JETGui(playerRef, CustomPageLifetime.CanDismiss, "", saved);
                 player.getPageManager().openCustomPage(ref, store, gui);

@@ -25,6 +25,7 @@ import java.util.List;
 public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.SettingsData> {
 
     private final JETPlugin plugin;
+    private boolean isOp = false;
 
     // Built-in background options
     private static final String[] BUILTIN_BACKGROUNDS = {
@@ -56,9 +57,22 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Settings.ui");
 
+        // Check if player is OP
+        try {
+            com.hypixel.hytale.server.core.entity.UUIDComponent uuidComponent =
+                    store.getComponent(ref, com.hypixel.hytale.server.core.entity.UUIDComponent.getComponentType());
+            if (uuidComponent != null) {
+                com.hypixel.hytale.server.core.permissions.PermissionsModule perms =
+                        com.hypixel.hytale.server.core.permissions.PermissionsModule.get();
+                java.util.Set<String> groups = perms.getGroupsForUser(uuidComponent.getUuid());
+                isOp = groups != null && groups.contains("OP");
+            }
+        } catch (Exception ignored) {}
+
         JETConfig config = plugin.getConfig();
         cmd.set("#BindAltKeyCheck #CheckBox.Value", config.bindAltKey);
         cmd.set("#GiveButtonsCheck #CheckBox.Value", config.enableGiveButtons);
+        cmd.set("#DisableJetCommandCheck #CheckBox.Value", config.disableJetCommand);
 
         // Build background dropdown entries
         List<DropdownEntryInfo> bgEntries = new ArrayList<>();
@@ -113,6 +127,13 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
 
         events.addEventBinding(
             CustomUIEventBindingType.ValueChanged,
+            "#DisableJetCommandCheck #CheckBox",
+            EventData.of("@DisableJetCommand", "#DisableJetCommandCheck #CheckBox.Value"),
+            false
+        );
+
+        events.addEventBinding(
+            CustomUIEventBindingType.ValueChanged,
             "#BackgroundDropdown",
             EventData.of("@BackgroundImage", "#BackgroundDropdown.Value"),
             false
@@ -160,6 +181,11 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
             changed = true;
         }
 
+        if (data.disableJetCommand != null && isOp) {
+            config.disableJetCommand = data.disableJetCommand;
+            changed = true;
+        }
+
         if (data.backgroundImage != null && !data.backgroundImage.equals(config.backgroundImage)) {
             config.backgroundImage = data.backgroundImage;
             changed = true;
@@ -193,12 +219,14 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
                 .builder(SettingsData.class, SettingsData::new)
                 .addField(new KeyedCodec<>("@BindAltKey", Codec.BOOLEAN), (d, v) -> d.bindAltKey = v, d -> d.bindAltKey)
                 .addField(new KeyedCodec<>("@EnableGiveButtons", Codec.BOOLEAN), (d, v) -> d.enableGiveButtons = v, d -> d.enableGiveButtons)
+                .addField(new KeyedCodec<>("@DisableJetCommand", Codec.BOOLEAN), (d, v) -> d.disableJetCommand = v, d -> d.disableJetCommand)
                 .addField(new KeyedCodec<>("@BackgroundImage", Codec.STRING), (d, v) -> d.backgroundImage = v, d -> d.backgroundImage)
                 .addField(new KeyedCodec<>("@BackgroundOpacity", Codec.STRING), (d, v) -> d.backgroundOpacity = v, d -> d.backgroundOpacity)
                 .build();
 
         private Boolean bindAltKey;
         private Boolean enableGiveButtons;
+        private Boolean disableJetCommand;
         private String backgroundImage;
         private String backgroundOpacity;
 
