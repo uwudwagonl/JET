@@ -204,9 +204,11 @@ public class JETPlugin extends JavaPlugin {
 
     @SuppressWarnings("unchecked")
     private static void onItemsLoaded(LoadedAssetsEvent<String, Item, DefaultAssetMap<String, Item>> event) {
-        ITEMS = ((DefaultAssetMap<String, Item>) event.getAssetMap()).getAssetMap();
+        DefaultAssetMap<String, Item> assetMap = (DefaultAssetMap<String, Item>) event.getAssetMap();
+        ITEMS = assetMap.getAssetMap();
         instance.itemRegistry.reload(ITEMS);
         instance.log(Level.INFO, "[JET] Loaded " + instance.itemRegistry.size() + " items");
+
     }
 
     @SuppressWarnings("unchecked")

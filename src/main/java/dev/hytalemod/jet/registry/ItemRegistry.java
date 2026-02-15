@@ -1,5 +1,7 @@
 package dev.hytalemod.jet.registry;
 
+import com.hypixel.hytale.assetstore.AssetPack;
+import com.hypixel.hytale.server.core.asset.AssetModule;
 import com.hypixel.hytale.server.core.asset.type.item.config.Item;
 
 import java.util.*;
@@ -194,5 +196,36 @@ public class ItemRegistry {
     
     public List<Category> getCategories() {
         return Arrays.asList(Category.values());
+    }
+
+    /**
+     * Returns a sorted map of pack internal name -> display label for all packs that contribute items.
+     * The base game pack is labeled "Vanilla".
+     */
+    public LinkedHashMap<String, String> getAvailablePackLabels() {
+        LinkedHashMap<String, String> result = new LinkedHashMap<>();
+        try {
+            TreeMap<String, String> sorted = new TreeMap<>();
+            for (AssetPack pack : AssetModule.get().getAssetPacks()) {
+                String internalName = pack.getName();
+                Set<String> contributed = Item.getAssetMap().getKeysForPack(internalName);
+                if (contributed == null || contributed.isEmpty()) continue;
+
+                String label = pack.getManifest().getName();
+                // Rename the base game to something friendlier
+                if ("Hytale".equals(label)) label = "Vanilla";
+                sorted.put(internalName, label);
+            }
+            result.putAll(sorted);
+        } catch (Exception ignored) {}
+        return result;
+    }
+
+    /**
+     * Returns the set of item IDs belonging to the given pack, or null if the pack has no items.
+     */
+    public Set<String> getItemIdsForPack(String packName) {
+        if (packName == null || packName.isEmpty()) return null;
+        return Item.getAssetMap().getKeysForPack(packName);
     }
 }

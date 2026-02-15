@@ -148,6 +148,16 @@ $C.@PageOverlay {
             Anchor: (Width: 100, Height: 28);
           }
 
+          Label {
+            Text: "Mod:";
+            Style: (FontSize: 14, TextColor: #ffffff, VerticalAlignment: Center);
+            Padding: (Left: 15, Right: 5);
+          }
+
+          $C.@DropdownBox #ModFilter {
+            Anchor: (Width: 140, Height: 28);
+          }
+
           Group {
             FlexWeight: 1;
           }

@@ -23,9 +23,7 @@ import com.hypixel.hytale.server.core.ui.builder.UICommandBuilder;
 import com.hypixel.hytale.server.core.ui.builder.UIEventBuilder;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
-import com.hypixel.hytale.assetstore.AssetPack;
 import com.hypixel.hytale.server.core.asset.type.item.config.ItemQuality;
-import com.hypixel.hytale.server.core.asset.AssetModule;
 import com.hypixel.hytale.protocol.Color;
 import dev.hytalemod.jet.JETPlugin;
 import dev.hytalemod.jet.component.RecipeHudComponent;
@@ -199,6 +197,26 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 CustomUIEventBindingType.ValueChanged,
                 "#GridLayout",
                 EventData.of("@GridLayout", "#GridLayout.Value"),
+                false
+        );
+
+        // Mod filter dropdown
+        LinkedHashMap<String, String> packLabels = JETPlugin.getInstance().getItemRegistry().getAvailablePackLabels();
+        List<com.hypixel.hytale.server.core.ui.DropdownEntryInfo> modEntries = new ArrayList<>();
+        modEntries.add(new com.hypixel.hytale.server.core.ui.DropdownEntryInfo(
+                com.hypixel.hytale.server.core.ui.LocalizableString.fromString("All Mods"), ""));
+        for (Map.Entry<String, String> pe : packLabels.entrySet()) {
+            modEntries.add(new com.hypixel.hytale.server.core.ui.DropdownEntryInfo(
+                    com.hypixel.hytale.server.core.ui.LocalizableString.fromString(pe.getValue()),
+                    pe.getKey()));
+        }
+        cmd.set("#ModFilter.Entries", modEntries);
+        cmd.set("#ModFilter.Value", modFilter != null ? modFilter : "");
+
+        events.addEventBinding(
+                CustomUIEventBindingType.ValueChanged,
+                "#ModFilter",
+                EventData.of("@ModFilter", "#ModFilter.Value"),
                 false
         );
 
@@ -632,18 +650,15 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     private void buildItemList(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         List<Map.Entry<String, Item>> results = new ArrayList<>();
 
-        // Get filtered items by mod if filter is active
-        Set<String> modItemIds = null;
-        if (modFilter != null && !modFilter.isEmpty()) {
-            modItemIds = Item.getAssetMap().getKeysForPack(modFilter);
-        }
+        // Pre-compute allowed item IDs for the active pack filter
+        Set<String> modFilterItems = JETPlugin.getInstance().getItemRegistry().getItemIdsForPack(modFilter);
 
         // Filter items by search, category, mod, and quality
         for (Map.Entry<String, Item> entry : JETPlugin.ITEMS.entrySet()) {
             Item item = entry.getValue();
 
-            // Mod filter check
-            if (modItemIds != null && !modItemIds.contains(entry.getKey())) {
+            // Mod/pack filter check
+            if (modFilterItems != null && !modFilterItems.contains(entry.getKey())) {
                 continue;
             }
 
@@ -2085,7 +2100,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("CategoryFilter", Codec.STRING), (d, v) -> d.categoryFilter = v, d -> d.categoryFilter)
                 .addField(new KeyedCodec<>("ClearFilters", Codec.STRING), (d, v) -> d.clearFilters = v, d -> d.clearFilters)
                 .addField(new KeyedCodec<>("SortMode", Codec.STRING), (d, v) -> d.sortMode = v, d -> d.sortMode)
-                .addField(new KeyedCodec<>("ModFilter", Codec.STRING), (d, v) -> d.modFilter = v, d -> d.modFilter)
+                .addField(new KeyedCodec<>("@ModFilter", Codec.STRING), (d, v) -> d.modFilter = v, d -> d.modFilter)
                 .addField(new KeyedCodec<>("@GridLayout", Codec.STRING), (d, v) -> d.gridLayout = v, d -> d.gridLayout)
                 .addField(new KeyedCodec<>("@ShowHiddenItems", Codec.BOOLEAN), (d, v) -> d.showHiddenItems = v, d -> d.showHiddenItems)
                 .addField(new KeyedCodec<>("@ShowSalvagerRecipes", Codec.BOOLEAN), (d, v) -> d.showSalvagerRecipes = v, d -> d.showSalvagerRecipes)
