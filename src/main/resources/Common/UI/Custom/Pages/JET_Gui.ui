@@ -360,87 +360,97 @@ $C.@PageOverlay {
 
           }
 
-          Group #ItemStatsSection {
-            LayoutMode: Top;
-            Padding: (Top: 10);
-            Visible: false;
+          Group #InfoScrollArea {
+            FlexWeight: 1;
+            LayoutMode: TopScrolling;
+            ScrollbarStyle: $C.@DefaultScrollbarStyle;
 
-            Group #StatsHeader {
-              LayoutMode: Left;
-              Anchor: (Height: 18);
-              Padding: (Bottom: 3);
+            Group #InfoScrollContent {
+              LayoutMode: Top;
 
-              Button #ToggleStats {
-                Anchor: (Width: 18, Height: 18);
-                Style: (Hovered: (Background: #253550(0.8)));
-                LayoutMode: Middle;
+              Group #ItemStatsSection {
+                LayoutMode: Top;
+                Padding: (Top: 10);
+                Visible: false;
 
-                ItemIcon #ToggleStatsIcon {
-                  Anchor: (Width: 16, Height: 16);
+                Group #StatsHeader {
+                  LayoutMode: Left;
+                  Anchor: (Height: 18);
+                  Padding: (Bottom: 3);
+
+                  Button #ToggleStats {
+                    Anchor: (Width: 18, Height: 18);
+                    Style: (Hovered: (Background: #253550(0.8)));
+                    LayoutMode: Middle;
+
+                    ItemIcon #ToggleStatsIcon {
+                      Anchor: (Width: 16, Height: 16);
+                      Visible: true;
+                    }
+                  }
+
+                  Label #StatsLabel {
+                    Text: "Item Stats";
+                    Style: (FontSize: 12, TextColor: #aaccff, VerticalAlignment: Center, RenderBold: true);
+                    Padding: (Left: 3);
+                  }
+                }
+
+                Group #StatsContent {
+                  LayoutMode: Top;
+                  Padding: (Top: 5, Left: 5);
                   Visible: true;
+
+                  Label #ItemStats {
+                    Style: (
+                      FontSize: 14,
+                      TextColor: #aaccff
+                    );
+                  }
                 }
               }
 
-              Label #StatsLabel {
-                Text: "Item Stats";
-                Style: (FontSize: 12, TextColor: #aaccff, VerticalAlignment: Center, RenderBold: true);
-                Padding: (Left: 3);
-              }
-            }
+              Group #AdvancedInfoSection {
+                LayoutMode: Top;
+                Padding: (Top: 10);
+                Visible: false;
 
-            Group #StatsContent {
-              LayoutMode: Top;
-              Padding: (Top: 5, Left: 5);
-              Visible: true;
+                Group #AdvancedInfoHeader {
+                  LayoutMode: Left;
+                  Anchor: (Height: 18);
+                  Padding: (Bottom: 3);
 
-              Label #ItemStats {
-                Style: (
-                  FontSize: 11,
-                  TextColor: #aaccff
-                );
-              }
-            }
-          }
+                  Button #ToggleAdvancedInfo {
+                    Anchor: (Width: 18, Height: 18);
+                    Style: (Hovered: (Background: #253550(0.8)));
+                    LayoutMode: Middle;
 
-          Group #AdvancedInfoSection {
-            LayoutMode: Top;
-            Padding: (Top: 10);
-            Visible: false;
+                    ItemIcon #ToggleAdvancedInfoIcon {
+                      Anchor: (Width: 16, Height: 16);
+                      Visible: true;
+                    }
+                  }
 
-            Group #AdvancedInfoHeader {
-              LayoutMode: Left;
-              Anchor: (Height: 18);
-              Padding: (Bottom: 3);
-
-              Button #ToggleAdvancedInfo {
-                Anchor: (Width: 18, Height: 18);
-                Style: (Hovered: (Background: #253550(0.8)));
-                LayoutMode: Middle;
-
-                ItemIcon #ToggleAdvancedInfoIcon {
-                  Anchor: (Width: 16, Height: 16);
-                  Visible: true;
+                  Label #AdvancedInfoLabel {
+                    Text: "Advanced Info";
+                    Style: (FontSize: 12, TextColor: #888888, VerticalAlignment: Center, RenderBold: true);
+                    Padding: (Left: 3);
+                  }
                 }
-              }
 
-              Label #AdvancedInfoLabel {
-                Text: "Advanced Info";
-                Style: (FontSize: 12, TextColor: #888888, VerticalAlignment: Center, RenderBold: true);
-                Padding: (Left: 3);
-              }
-            }
+                Group #AdvancedInfoContent {
+                  LayoutMode: Top;
+                  Padding: (Top: 5, Left: 5);
+                  Background: (Color: #0a0a0a(0.5));
+                  Visible: true;
 
-            Group #AdvancedInfoContent {
-              LayoutMode: Top;
-              Padding: (Top: 5, Left: 5);
-              Background: (Color: #0a0a0a(0.5));
-              Visible: true;
-
-              Label #AdvancedInfoText {
-                Style: (
-                  FontSize: 10,
-                  TextColor: #99aacc
-                );
+                  Label #AdvancedInfoText {
+                    Style: (
+                      FontSize: 10,
+                      TextColor: #99aacc
+                    );
+                  }
+                }
               }
             }
           }

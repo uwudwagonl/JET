@@ -36,7 +36,12 @@ import dev.hytalemod.jet.util.InventoryScanner;
 import dev.hytalemod.jet.util.SearchParser;
 import com.hypixel.hytale.server.core.entity.entities.Player;
 
+import com.hypixel.hytale.assetstore.AssetPack;
+import com.hypixel.hytale.server.core.asset.AssetModule;
+
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.LinkedList;
 import java.util.logging.Level;
@@ -1608,6 +1613,58 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         return Message.raw(displayName);
     }
 
+
+    private String resolveQualityColor(ItemQuality quality, String qualityName) {
+        try {
+            if (quality.getTextColor() != null) {
+                Color color = quality.getTextColor();
+                try {
+                    Method getRed = color.getClass().getMethod("getRed");
+                    Method getGreen = color.getClass().getMethod("getGreen");
+                    Method getBlue = color.getClass().getMethod("getBlue");
+                    int r = (int) getRed.invoke(color);
+                    int g = (int) getGreen.invoke(color);
+                    int b = (int) getBlue.invoke(color);
+                    if (r != 255 || g != 255 || b != 255) {
+                        return String.format("#%02x%02x%02x", r, g, b);
+                    }
+                } catch (Exception e) {
+                    try {
+                        java.lang.reflect.Field rField = color.getClass().getField("r");
+                        Object rObj = rField.get(color);
+                        java.lang.reflect.Field gField = color.getClass().getField("g");
+                        Object gObj = gField.get(color);
+                        java.lang.reflect.Field bField = color.getClass().getField("b");
+                        Object bObj = bField.get(color);
+                        int r, g, b;
+                        if (rObj instanceof Float) {
+                            r = (int) ((float) rObj * 255);
+                            g = (int) ((float) gObj * 255);
+                            b = (int) ((float) bObj * 255);
+                        } else {
+                            r = ((Number) rObj).intValue();
+                            g = ((Number) gObj).intValue();
+                            b = ((Number) bObj).intValue();
+                        }
+                        if (r != 255 || g != 255 || b != 255) {
+                            return String.format("#%02x%02x%02x", r, g, b);
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+        } catch (Exception ignored) {}
+
+        String lower = qualityName.toLowerCase();
+        if (lower.contains("common")) return "#aaaaaa";
+        if (lower.contains("uncommon")) return "#55cc55";
+        if (lower.contains("rare")) return "#5599ff";
+        if (lower.contains("epic")) return "#bb66ff";
+        if (lower.contains("legendary")) return "#ffaa00";
+        if (lower.contains("relic")) return "#ff5555";
+        if (lower.contains("unique")) return "#ff66aa";
+        return "#ffffff";
+    }
+
     private Message buildTooltip(String itemId, Item item, String language) {
         TooltipBuilder tooltip = TooltipBuilder.create();
 
@@ -1788,114 +1845,184 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             return;
         }
 
-        StringBuilder stats = new StringBuilder();
+        List<Message> parts = new ArrayList<>();
         boolean hasStats = false;
         String itemId = item.getId();
-        List<String> biomeSpawns = JETPlugin.getInstance().getDropListRegistry().getOreBiomeSpawns(itemId);
-        if (!biomeSpawns.isEmpty()) {
-            hasStats = true;
-            stats.append("Ore Spawn Locations:\n");
-            for (String biome : biomeSpawns) {
-                stats.append("  ⛏ ").append(biome).append("\n");
+
+        boolean hasGeneralInfo = false;
+        List<Message> generalParts = new ArrayList<>();
+
+        try {
+            String descKey = item.getDescriptionTranslationKey();
+            if (descKey != null && !descKey.isEmpty()) {
+                String description = I18nModule.get().getMessage(language, descKey);
+                if (description != null && !description.isEmpty() && !description.equals(descKey)) {
+                    description = stripColorTags(description);
+                    generalParts.add(Message.raw("  " + description + "\n").color("#aaaaaa"));
+                    hasGeneralInfo = true;
+                }
             }
-            stats.append("\n");
+        } catch (Exception ignored) {}
+
+        if (item.getMaxDurability() > 0) {
+            generalParts.add(Message.raw("  Durability: ").color("#aaccff"));
+            generalParts.add(Message.raw(String.format("%.0f", item.getMaxDurability()) + "\n").color("#ffffff"));
+            hasGeneralInfo = true;
         }
 
-        // Weapon stats - extract from interactions
         try {
-            Object weaponObj = item.getClass().getMethod("getWeapon").invoke(item);
-            if (weaponObj != null) {
-                hasStats = true;
-                stats.append("Weapon Stats:\n");
-
-                // Extract damage values from Interaction objects
-                try {
-                    java.lang.reflect.Field interactionsField = item.getClass().getDeclaredField("interactions");
-                    interactionsField.setAccessible(true);
-                    Object interactions = interactionsField.get(item);
-
-                    if (interactions != null && interactions instanceof java.util.Map) {
-                        java.util.Map<?, ?> interactionMap = (java.util.Map<?, ?>) interactions;
-
-                        for (java.util.Map.Entry<?, ?> entry : interactionMap.entrySet()) {
-                            stats.append("  ").append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
-                        }
-                    }
-                } catch (Exception ignored) {}
+            int qualityIndex = item.getQualityIndex();
+            ItemQuality quality = ItemQuality.getAssetMap().getAsset(qualityIndex);
+            if (quality != null) {
+                String qualityName = I18nModule.get().getMessage(language, quality.getLocalizationKey());
+                if (qualityName != null && !qualityName.isEmpty()) {
+                    generalParts.add(Message.raw("  Quality: ").color("#aaccff"));
+                    String qColor = resolveQualityColor(quality, qualityName);
+                    generalParts.add(Message.raw(qualityName + "\n").color(qColor));
+                    hasGeneralInfo = true;
+                }
             }
         } catch (Exception ignored) {}
 
-        // Armor stats
+        if (item.getMaxStack() != 1) {
+            generalParts.add(Message.raw("  Max Stack: ").color("#aaccff"));
+            generalParts.add(Message.raw(item.getMaxStack() + "\n").color("#ffffff"));
+            hasGeneralInfo = true;
+        }
+
+        if (hasGeneralInfo) {
+            hasStats = true;
+            parts.add(Message.raw("General:\n").color("#ffcc44").bold(true));
+            parts.addAll(generalParts);
+        }
+
+        List<String> biomeSpawns = JETPlugin.getInstance().getDropListRegistry().getOreBiomeSpawns(itemId);
+        if (!biomeSpawns.isEmpty()) {
+            if (hasStats) parts.add(Message.raw("\n"));
+            hasStats = true;
+            parts.add(Message.raw("Ore Spawn Locations:\n").color("#ffcc44").bold(true));
+            for (String biome : biomeSpawns) {
+                parts.add(Message.raw("  ⛏ " + biome + "\n").color("#88ff88"));
+            }
+        }
+
         try {
-            Object armorObj = item.getClass().getMethod("getArmor").invoke(item);
+            if (item.getWeapon() != null) {
+                boolean hasWeaponStats = false;
+                List<Message> weaponParts = new ArrayList<>();
+
+                Map<String, int[]> attackDamage = readWeaponDamageFromJson(itemId);
+                if (!attackDamage.isEmpty()) {
+                    int overallMax = 0;
+                    int overallMinSum = 0;
+                    int count = 0;
+                    for (Map.Entry<String, int[]> dmgEntry : attackDamage.entrySet()) {
+                        String attackName = dmgEntry.getKey().replace("_", " ");
+                        int[] minMax = dmgEntry.getValue();
+                        if (minMax[0] == minMax[1]) {
+                            weaponParts.add(Message.raw("  " + attackName + ": ").color("#aaccff"));
+                            weaponParts.add(Message.raw(minMax[0] + "\n").color("#ff6666"));
+                        } else {
+                            weaponParts.add(Message.raw("  " + attackName + ": ").color("#aaccff"));
+                            weaponParts.add(Message.raw(minMax[0] + " - " + minMax[1] + "\n").color("#ff6666"));
+                        }
+                        overallMax = Math.max(overallMax, minMax[1]);
+                        overallMinSum += minMax[0];
+                        count++;
+                        hasWeaponStats = true;
+                    }
+
+                    if (count > 0) {
+                        List<Message> dmgSummary = new ArrayList<>();
+                        dmgSummary.add(Message.raw("  Max Damage: ").color("#aaccff"));
+                        dmgSummary.add(Message.raw(overallMax + "\n").color("#ff4444").bold(true));
+                        weaponParts.addAll(0, dmgSummary);
+                    }
+                }
+
+                if (readStatModifiers(item.getWeapon(), weaponParts)) {
+                    hasWeaponStats = true;
+                }
+
+                if (hasWeaponStats) {
+                    if (hasStats) parts.add(Message.raw("\n"));
+                    hasStats = true;
+                    parts.add(Message.raw("Weapon Stats:\n").color("#ffcc44").bold(true));
+                    parts.addAll(weaponParts);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            Object armorObj = item.getArmor();
             if (armorObj != null) {
-                if (hasStats) stats.append("\n");
-                hasStats = true;
-                stats.append("Armor Stats:\n");
+                boolean hasArmorStats = false;
+                List<Message> armorParts = new ArrayList<>();
 
-                // Try to get damage resistance
-                try {
-                    Method getResistanceMethod = armorObj.getClass().getMethod("getDamageResistanceValues");
-                    Object resistance = getResistanceMethod.invoke(armorObj);
-                    if (resistance != null && resistance instanceof java.util.Map) {
-                        java.util.Map<?, ?> resMap = (java.util.Map<?, ?>) resistance;
-                        for (java.util.Map.Entry<?, ?> entry : resMap.entrySet()) {
-                            try {
-                                // Cast key to DamageCause and get ID
-                                Class<?> damageCauseClass = Class.forName("com.hypixel.hytale.server.core.modules.entity.damage.DamageCause");
-                                Object damageCause = damageCauseClass.cast(entry.getKey());
-                                Method getIdMethod = damageCauseClass.getMethod("getId");
-                                String damageId = (String) getIdMethod.invoke(damageCause);
+                Method getResistanceMethod = armorObj.getClass().getMethod("getDamageResistanceValues");
+                Object resistance = getResistanceMethod.invoke(armorObj);
+                if (resistance instanceof java.util.Map) {
+                    java.util.Map<?, ?> resMap = (java.util.Map<?, ?>) resistance;
+                    for (java.util.Map.Entry<?, ?> entry : resMap.entrySet()) {
+                        try {
+                            Object damageCause = entry.getKey();
+                            Method getIdMethod = damageCause.getClass().getMethod("getId");
+                            String causeId = (String) getIdMethod.invoke(damageCause);
 
-                                // The value is an array of StaticModifier
-                                Object[] modifiers = (Object[]) entry.getValue();
-                                for (Object modifier : modifiers) {
-                                    stats.append("  ").append(damageId).append(" Resistance: +");
-                                    stats.append(formatStaticModifier(modifier));
-                                    stats.append("\n");
-                                }
-                            } catch (Exception e) {
-                                // Fallback: just show the raw value
-                                stats.append("  ").append(entry.getKey().toString()).append(": ").append(entry.getValue()).append("\n");
+                            Object[] modifiers = (Object[]) entry.getValue();
+                            for (Object modifier : modifiers) {
+                                String formatted = formatStaticModifier(modifier);
+                                armorParts.add(Message.raw("  " + causeId + " Resistance: ").color("#aaccff"));
+                                armorParts.add(Message.raw("+" + formatted + "\n").color("#55aaff"));
+                                hasArmorStats = true;
                             }
-                        }
+                        } catch (Exception ignored) {}
                     }
-                } catch (Exception ignored) {}
+                }
+
+                if (hasArmorStats) {
+                    if (hasStats) parts.add(Message.raw("\n"));
+                    hasStats = true;
+                    parts.add(Message.raw("Armor Stats:\n").color("#ffcc44").bold(true));
+                    parts.addAll(armorParts);
+                }
             }
         } catch (Exception ignored) {}
 
-        // Tool stats
         try {
-            Object toolObj = item.getClass().getMethod("getTool").invoke(item);
-            if (toolObj != null) {
-                if (hasStats) stats.append("\n");
-                hasStats = true;
-                stats.append("Tool Stats:\n");
+            if (item.getTool() != null) {
+                boolean hasToolStats = false;
+                List<Message> toolParts = new ArrayList<>();
 
-                try {
-                    Method getSpecsMethod = toolObj.getClass().getMethod("getSpecs");
-                    Object specs = getSpecsMethod.invoke(toolObj);
-
-                    if (specs != null && specs.getClass().isArray()) {
-                        Object[] specsArray = (Object[]) specs;
-                        for (Object spec : specsArray) {
-                            try {
-                                Method getGatherTypeMethod = spec.getClass().getMethod("getGatherType");
-                                Method getPowerMethod = spec.getClass().getMethod("getPower");
-                                String gatherType = (String) getGatherTypeMethod.invoke(spec);
-                                float power = (Float) getPowerMethod.invoke(spec);
-                                stats.append("  ").append(gatherType).append(": ").append(String.format("%.2f", power)).append("\n");
-                            } catch (Exception ignored) {}
-                        }
+                Object[] specs = item.getTool().getSpecs();
+                if (specs != null && specs.length > 0) {
+                    for (Object spec : specs) {
+                        try {
+                            Method getGatherTypeMethod = spec.getClass().getMethod("getGatherType");
+                            Method getPowerMethod = spec.getClass().getMethod("getPower");
+                            String gatherType = (String) getGatherTypeMethod.invoke(spec);
+                            float power = (Float) getPowerMethod.invoke(spec);
+                            toolParts.add(Message.raw("  " + gatherType + ": ").color("#aaccff"));
+                            toolParts.add(Message.raw(String.format("%.2f", power) + "\n").color("#ffffff"));
+                            hasToolStats = true;
+                        } catch (Exception ignored) {}
                     }
-                } catch (Exception ignored) {}
+                }
+
+                if (hasToolStats) {
+                    if (hasStats) parts.add(Message.raw("\n"));
+                    hasStats = true;
+                    parts.add(Message.raw("Tool Stats:\n").color("#ffcc44").bold(true));
+                    parts.addAll(toolParts);
+                }
             }
         } catch (Exception ignored) {}
 
         if (hasStats) {
             cmd.set("#RecipePanel #ItemStatsSection.Visible", true);
             cmd.set("#RecipePanel #ItemStatsSection #StatsContent.Visible", !statsCollapsed);
-            cmd.set("#RecipePanel #ItemStatsSection #StatsContent #ItemStats.TextSpans", Message.raw(stats.toString()));
+            cmd.set("#RecipePanel #ItemStatsSection #StatsContent #ItemStats.TextSpans",
+                    Message.join(parts.toArray(new Message[0])));
             String chevronItem = statsCollapsed ? "JET_Icon_Arrow_Right" : "JET_Icon_Chevron_Down";
             cmd.set("#RecipePanel #ItemStatsSection #ToggleStats #ToggleStatsIcon.ItemId", chevronItem);
         } else {
@@ -1903,37 +2030,22 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
     }
 
-    /**
-     * Resolves interaction variable references (values starting with *)
-     * to their actual numeric values
-     */
     private Object resolveInteractionVar(Object value, java.util.Map<String, Object> varsMap) {
         if (value == null) return "null";
-
         String valueStr = value.toString();
-
-        // If it's a reference (starts with *), resolve it
         if (valueStr.startsWith("*")) {
-            String refKey = valueStr.substring(1); // Remove the *
+            String refKey = valueStr.substring(1);
             Object resolved = varsMap.get(refKey);
-
-            if (resolved != null) {
-                // Recursively resolve in case it's a nested reference
-                return resolveInteractionVar(resolved, varsMap);
-            }
-            return valueStr; // Return original if can't resolve
+            if (resolved != null) return resolveInteractionVar(resolved, varsMap);
+            return valueStr;
         }
-
-        // It's an actual value - format it nicely
         if (value instanceof Number) {
             Number num = (Number) value;
-            // Format floats/doubles with 1 decimal place, integers as-is
             if (value instanceof Float || value instanceof Double) {
                 return String.format("%.1f", num.doubleValue());
             }
             return num.toString();
         }
-
         return valueStr;
     }
 
@@ -1945,18 +2057,14 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
         cmd.set("#RecipePanel #AdvancedInfoSection.Visible", true);
 
-        // Update visibility and UI based on collapsed state
         cmd.set("#RecipePanel #AdvancedInfoSection #AdvancedInfoContent.Visible", !advancedInfoCollapsed);
 
-        // Update toggle button chevron icon
         String chevronItem = advancedInfoCollapsed ? "JET_Icon_Arrow_Right" : "JET_Icon_Chevron_Down";
         cmd.set("#RecipePanel #AdvancedInfoSection #ToggleAdvancedInfo #ToggleAdvancedInfoIcon.ItemId", chevronItem);
 
-        // Build the advanced information content (technical details only)
         StringBuilder advInfo = new StringBuilder();
         String itemId = item.getId();
 
-        // === ITEM PROPERTIES ===
         advInfo.append("--- Item Properties ---\n");
         advInfo.append("  Item ID: ").append(itemId).append("\n");
         advInfo.append("  Namespace: ").append(extractNamespace(itemId)).append("\n");
@@ -1966,7 +2074,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             advInfo.append("  Max Durability: ").append(String.format("%.0f", item.getMaxDurability())).append("\n");
         }
 
-        // Quality
         try {
             int qualityIndex = item.getQualityIndex();
             ItemQuality quality = ItemQuality.getAssetMap().getAsset(qualityIndex);
@@ -1981,7 +2088,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
         } catch (Exception ignored) {}
 
-        // Resource Types
         try {
             ItemResourceType[] resourceTypes = item.getResourceTypes();
             if (resourceTypes != null && resourceTypes.length > 0) {
@@ -1994,7 +2100,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
         } catch (Exception ignored) {}
 
-        // === TRANSLATION KEYS (for modders) ===
         try {
             String transKey = item.getTranslationKey();
             String descKey = item.getDescriptionTranslationKey();
@@ -2009,8 +2114,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
         } catch (Exception ignored) {}
 
-        // Set the advanced info text
-        cmd.set("#RecipePanel #AdvancedInfoSection #AdvancedInfoText.TextSpans", Message.raw(advInfo.toString()));
+        Message advInfoMessage = Message.raw(advInfo.toString());
+        cmd.set("#RecipePanel #AdvancedInfoSection #AdvancedInfoText.TextSpans", advInfoMessage);
+        cmd.set("#RecipePanel #AdvancedInfoSection #AdvancedInfoText.TooltipTextSpans", advInfoMessage);
     }
 
     private String extractNamespace(String itemId) {
@@ -2082,10 +2188,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         return result;
     }
 
-    /**
-     * Apply background image from config settings
-     */
-
     public static class GuiData {
         private String pinToHud;
         public static final BuilderCodec<GuiData> CODEC = BuilderCodec
@@ -2145,7 +2247,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
     private String formatStaticModifier(Object modifier) {
         try {
-            // Cast to StaticModifier directly
             com.hypixel.hytale.server.core.modules.entitystats.modifier.StaticModifier staticMod =
                 (com.hypixel.hytale.server.core.modules.entitystats.modifier.StaticModifier) modifier;
 
@@ -2163,6 +2264,98 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
         } catch (Exception e) {
             return "?";
+        }
+    }
+
+    private boolean readStatModifiers(Object weaponOrArmor, List<Message> parts) {
+        boolean found = false;
+        try {
+            Method getStatModsMethod = weaponOrArmor.getClass().getMethod("getStatModifiers");
+            Object statMods = getStatModsMethod.invoke(weaponOrArmor);
+            if (statMods == null) return false;
+
+            Method int2ObjectEntrySetMethod = statMods.getClass().getMethod("int2ObjectEntrySet");
+            Object entrySet = int2ObjectEntrySetMethod.invoke(statMods);
+            if (!(entrySet instanceof java.util.Set)) return false;
+
+            Class<?> entityStatTypeClass = Class.forName("com.hypixel.hytale.server.core.modules.entitystats.asset.EntityStatType");
+            Method getAssetMapMethod = entityStatTypeClass.getMethod("getAssetMap");
+            Object assetMap = getAssetMapMethod.invoke(null);
+            Method getAssetMethod = assetMap.getClass().getMethod("getAsset", int.class);
+
+            for (Object entryObj : (java.util.Set<?>) entrySet) {
+                try {
+                    int statTypeIndex = (Integer) entryObj.getClass().getMethod("getIntKey").invoke(entryObj);
+                    Object entityStatType = getAssetMethod.invoke(assetMap, statTypeIndex);
+                    if (entityStatType == null) continue;
+
+                    String statId = (String) entityStatType.getClass().getMethod("getId").invoke(entityStatType);
+                    String statName = statId.replace("_", " ");
+                    Object[] modifiers = (Object[]) entryObj.getClass().getMethod("getValue").invoke(entryObj);
+
+                    for (Object modifier : modifiers) {
+                        parts.add(Message.raw("  " + statName + ": ").color("#aaccff"));
+                        parts.add(Message.raw("+" + formatStaticModifier(modifier) + "\n").color("#55ff55"));
+                        found = true;
+                    }
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+        return found;
+    }
+
+    private Map<String, int[]> readWeaponDamageFromJson(String itemId) {
+        Map<String, int[]> result = new LinkedHashMap<>();
+        try {
+            Path itemPath = Item.getAssetMap().getPath(itemId);
+            if (itemPath == null) return result;
+
+            AssetPack pack = AssetModule.get().findAssetPackForPath(itemPath);
+            if (pack == null) return result;
+
+            Path fullPath = pack.getRoot().resolve(itemPath);
+            if (!Files.exists(fullPath)) return result;
+
+            String jsonContent = Files.readString(fullPath);
+            com.google.gson.JsonObject root = com.google.gson.JsonParser.parseString(jsonContent).getAsJsonObject();
+            if (!root.has("InteractionVars")) return result;
+
+            com.google.gson.JsonObject interactionVars = root.getAsJsonObject("InteractionVars");
+            for (Map.Entry<String, com.google.gson.JsonElement> varEntry : interactionVars.entrySet()) {
+                parseDamageFromInteractionVar(varEntry.getKey(), varEntry.getValue(), result);
+            }
+        } catch (Exception ignored) {}
+        return result;
+    }
+
+    private void parseDamageFromInteractionVar(String varName, com.google.gson.JsonElement varValue, Map<String, int[]> result) {
+        if (!varValue.isJsonObject()) return;
+        com.google.gson.JsonObject varObj = varValue.getAsJsonObject();
+        if (!varObj.has("Interactions")) return;
+
+        for (com.google.gson.JsonElement interactionEl : varObj.getAsJsonArray("Interactions")) {
+            if (!interactionEl.isJsonObject()) continue;
+            com.google.gson.JsonObject interaction = interactionEl.getAsJsonObject();
+            if (!interaction.has("DamageCalculator")) continue;
+
+            com.google.gson.JsonObject damageCalc = interaction.getAsJsonObject("DamageCalculator");
+            if (!damageCalc.has("BaseDamage")) continue;
+
+            float totalDamage = 0;
+            for (Map.Entry<String, com.google.gson.JsonElement> dmgEntry : damageCalc.getAsJsonObject("BaseDamage").entrySet()) {
+                totalDamage += dmgEntry.getValue().getAsFloat();
+            }
+
+            if (totalDamage > 0) {
+                int minDmg = (int) totalDamage;
+                int maxDmg = (int) totalDamage;
+                if (damageCalc.has("RandomPercentageModifier")) {
+                    float modifier = damageCalc.get("RandomPercentageModifier").getAsFloat();
+                    minDmg = (int) (totalDamage * (1.0f - modifier));
+                    maxDmg = (int) (totalDamage * (1.0f + modifier));
+                }
+                result.put(varName, new int[]{minDmg, maxDmg});
+            }
         }
     }
 }
