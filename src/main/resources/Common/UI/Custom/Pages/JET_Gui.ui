@@ -145,21 +145,29 @@ $C.@PageOverlay {
           }
 
           $C.@DropdownBox #GridLayout {
-            Anchor: (Width: 100, Height: 28);
+            Anchor: (Width: 85, Height: 28);
+          }
+
+          Label {
+            Text: "Sort:";
+            Style: (FontSize: 14, TextColor: #ffffff, VerticalAlignment: Center);
+            Padding: (Left: 10, Right: 5);
+          }
+
+          $C.@DropdownBox #SortMode {
+            FlexWeight: 1;
+            Anchor: (Height: 28);
           }
 
           Label {
             Text: "Mod:";
             Style: (FontSize: 14, TextColor: #ffffff, VerticalAlignment: Center);
-            Padding: (Left: 15, Right: 5);
+            Padding: (Left: 10, Right: 5);
           }
 
           $C.@DropdownBox #ModFilter {
-            Anchor: (Width: 140, Height: 28);
-          }
-
-          Group {
             FlexWeight: 1;
+            Anchor: (Height: 28);
           }
         }
 

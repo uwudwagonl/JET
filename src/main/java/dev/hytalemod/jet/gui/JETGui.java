@@ -95,7 +95,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.usagePage = 0;
             this.dropsPage = 0;
             this.itemPage = 0;
-            this.sortMode = "category";
+            this.sortMode = "name_asc";
             this.modFilter = "";
             this.gridColumns = DEFAULT_ITEMS_PER_ROW;
             this.gridRows = DEFAULT_MAX_ROWS;
@@ -116,7 +116,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         this.usagePage = Math.max(0, s.usagePage);
         this.dropsPage = Math.max(0, s.dropsPage);
         this.itemPage = Math.max(0, s.itemPage);
-        this.sortMode = s.sortMode != null ? s.sortMode : "category";
+        this.sortMode = s.sortMode != null ? s.sortMode : "name_asc";
         this.modFilter = s.modFilter != null ? s.modFilter : "";
         this.gridColumns = Math.max(MIN_GRID_SIZE, Math.min(MAX_GRID_SIZE, s.gridColumns > 0 ? s.gridColumns : DEFAULT_ITEMS_PER_ROW));
         this.gridRows = Math.max(MIN_GRID_SIZE, Math.min(MAX_GRID_SIZE, s.gridRows > 0 ? s.gridRows : DEFAULT_MAX_ROWS));
@@ -202,6 +202,24 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 CustomUIEventBindingType.ValueChanged,
                 "#GridLayout",
                 EventData.of("@GridLayout", "#GridLayout.Value"),
+                false
+        );
+
+        // Sort mode dropdown
+        List<com.hypixel.hytale.server.core.ui.DropdownEntryInfo> sortEntries = new ArrayList<>();
+        sortEntries.add(new com.hypixel.hytale.server.core.ui.DropdownEntryInfo(
+                com.hypixel.hytale.server.core.ui.LocalizableString.fromString("Name"), "name_asc"));
+        sortEntries.add(new com.hypixel.hytale.server.core.ui.DropdownEntryInfo(
+                com.hypixel.hytale.server.core.ui.LocalizableString.fromString("Quality"), "quality"));
+        sortEntries.add(new com.hypixel.hytale.server.core.ui.DropdownEntryInfo(
+                com.hypixel.hytale.server.core.ui.LocalizableString.fromString("Craftable First"), "craftable"));
+        cmd.set("#SortMode.Entries", sortEntries);
+        cmd.set("#SortMode.Value", sortMode != null ? sortMode : "name_asc");
+
+        events.addEventBinding(
+                CustomUIEventBindingType.ValueChanged,
+                "#SortMode",
+                EventData.of("@SortMode", "#SortMode.Value"),
                 false
         );
 
@@ -346,7 +364,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             if (!activeFilters.isEmpty() || (modFilter != null && !modFilter.isEmpty())) {
                 activeFilters.clear();
                 modFilter = "";
-                sortMode = "category";
+                sortMode = "name_asc";
                 this.itemPage = 0;
                 this.selectedItem = null;
                 needsItemUpdate = true;
@@ -806,14 +824,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         String language = playerRef.getLanguage();
 
         switch (sortMode) {
-            case "name_asc":
-                // Sort by translated name A-Z
-                return Comparator.comparing(e -> getDisplayName(e.getValue(), language).toLowerCase());
-
-            case "name_desc":
-                // Sort by translated name Z-A
-                return Comparator.comparing(e -> getDisplayName(e.getValue(), language).toLowerCase(), Comparator.reverseOrder());
-
             case "quality":
                 // Sort by quality (higher quality first)
                 return Comparator.comparingInt((Map.Entry<String, Item> e) -> {
@@ -825,14 +835,17 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                     }
                 }).reversed().thenComparing(e -> getDisplayName(e.getValue(), language).toLowerCase());
 
-            case "category":
-            default:
-                // Sort by category, then by name
-                return Comparator.comparing((Map.Entry<String, Item> e) -> {
-                    // Get primary category for sorting
-                    ItemCategory primaryCat = CategoryUtil.getPrimaryCategory(e.getValue());
-                    return primaryCat != null ? primaryCat.name() : "ZZZZ"; // Put uncategorized at end
+            case "craftable":
+                // Craftable items first, then non-craftable, alphabetical within each group
+                return Comparator.comparingInt((Map.Entry<String, Item> e) -> {
+                    List<CraftingRecipe> recipes = JETPlugin.getInstance().getRecipeRegistry().getCraftingRecipes(e.getKey());
+                    return (recipes != null && !recipes.isEmpty()) ? 0 : 1;
                 }).thenComparing(e -> getDisplayName(e.getValue(), language).toLowerCase());
+
+            case "name_asc":
+            default:
+                // Sort by translated name A-Z
+                return Comparator.comparing(e -> getDisplayName(e.getValue(), language).toLowerCase());
         }
     }
 
@@ -2201,7 +2214,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("ItemPageChange", Codec.STRING), (d, v) -> d.itemPageChange = v, d -> d.itemPageChange)
                 .addField(new KeyedCodec<>("CategoryFilter", Codec.STRING), (d, v) -> d.categoryFilter = v, d -> d.categoryFilter)
                 .addField(new KeyedCodec<>("ClearFilters", Codec.STRING), (d, v) -> d.clearFilters = v, d -> d.clearFilters)
-                .addField(new KeyedCodec<>("SortMode", Codec.STRING), (d, v) -> d.sortMode = v, d -> d.sortMode)
+                .addField(new KeyedCodec<>("@SortMode", Codec.STRING), (d, v) -> d.sortMode = v, d -> d.sortMode)
                 .addField(new KeyedCodec<>("@ModFilter", Codec.STRING), (d, v) -> d.modFilter = v, d -> d.modFilter)
                 .addField(new KeyedCodec<>("@GridLayout", Codec.STRING), (d, v) -> d.gridLayout = v, d -> d.gridLayout)
                 .addField(new KeyedCodec<>("@ShowHiddenItems", Codec.BOOLEAN), (d, v) -> d.showHiddenItems = v, d -> d.showHiddenItems)

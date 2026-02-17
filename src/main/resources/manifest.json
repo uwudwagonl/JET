@@ -1,11 +1,11 @@
 {
   "Group": "JET",
   "Name": "Just Enough Tales (JET)",
-  "Version": "1.8.0",
+  "Version": "1.8.1",
   "Description": "Browse all items with search, categories, recipes and uses. Commands: /jet (Adventure) - open item browser | /pinned (Adventure) - view pinned items | /jetconfig (Adventure) - open settings GUI",
   "Authors": [{"Name": "uwudwagon"}, {"Name": "kuudraloremaster (carrot)"}],
   "Website": "",
-  "ServerVersion": "*",
+  "ServerVersion": "${serverVersion}",
   "Dependencies": {
     "Hytale:EntityModule": "*"
   },

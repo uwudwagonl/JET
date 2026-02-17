@@ -41,14 +41,31 @@ tasks {
     // Configure resource processing
     processResources {
         filteringCharset = Charsets.UTF_8.name()
-        
+
+        // Auto-detect Hytale server version from installed jar
+        val userHome = System.getProperty("user.home")
+        val serverJar = file("$userHome/AppData/Roaming/Hytale/install/release/package/game/latest/Server/HytaleServer.jar")
+        @Suppress("UNCHECKED_CAST")
+        val serverVersion: String = if (serverJar.exists()) {
+            val cls = Class.forName("java.util.jar.JarFile")
+            val jar = cls.getConstructor(Class.forName("java.io.File")).newInstance(serverJar)
+            val manifest = cls.getMethod("getManifest").invoke(jar)
+            val attrs = manifest?.javaClass?.getMethod("getMainAttributes")?.invoke(manifest)
+            val ver = attrs?.javaClass?.getMethod("getValue", String::class.java)?.invoke(attrs, "Implementation-Version") as? String ?: "*"
+            cls.getMethod("close").invoke(jar)
+            ver
+        } else {
+            "*"
+        }
+
         val props = mapOf(
             "group" to project.group,
             "version" to project.version,
-            "description" to project.description
+            "description" to project.description,
+            "serverVersion" to serverVersion
         )
         inputs.properties(props)
-        
+
         filesMatching("manifest.json") {
             expand(props)
         }
