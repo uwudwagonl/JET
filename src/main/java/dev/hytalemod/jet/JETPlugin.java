@@ -22,6 +22,7 @@ import dev.hytalemod.jet.interaction.OpenJETInteraction;
 import dev.hytalemod.jet.registry.DropListRegistry;
 import dev.hytalemod.jet.registry.ItemRegistry;
 import dev.hytalemod.jet.registry.RecipeRegistry;
+import dev.hytalemod.jet.registry.SetRegistry;
 import dev.hytalemod.jet.storage.BrowserStateStorage;
 import dev.hytalemod.jet.storage.PinnedItemsStorage;
 import dev.hytalemod.jet.system.AltKeyBind;
@@ -53,6 +54,7 @@ public class JETPlugin extends JavaPlugin {
     private ItemRegistry itemRegistry;
     private RecipeRegistry recipeRegistry;
     private DropListRegistry dropListRegistry;
+    private SetRegistry setRegistry;
     private PinnedItemsStorage pinnedItemsStorage;
     private BrowserStateStorage browserStateStorage;
 
@@ -130,6 +132,7 @@ public class JETPlugin extends JavaPlugin {
         itemRegistry = new ItemRegistry();
         recipeRegistry = new RecipeRegistry();
         dropListRegistry = new DropListRegistry();
+        setRegistry = new SetRegistry();
         pinnedItemsStorage = new PinnedItemsStorage();
         pinnedItemsStorage.load();
         browserStateStorage = new BrowserStateStorage();
@@ -207,7 +210,8 @@ public class JETPlugin extends JavaPlugin {
         DefaultAssetMap<String, Item> assetMap = (DefaultAssetMap<String, Item>) event.getAssetMap();
         ITEMS = assetMap.getAssetMap();
         instance.itemRegistry.reload(ITEMS);
-        instance.log(Level.INFO, "[JET] Loaded " + instance.itemRegistry.size() + " items");
+        instance.setRegistry.reload(ITEMS);
+        instance.log(Level.INFO, "[JET] Loaded " + instance.itemRegistry.size() + " items, " + instance.setRegistry.size() + " sets");
 
     }
 
@@ -319,6 +323,10 @@ public class JETPlugin extends JavaPlugin {
 
     public DropListRegistry getDropListRegistry() {
         return dropListRegistry;
+    }
+
+    public SetRegistry getSetRegistry() {
+        return setRegistry;
     }
 
     @SuppressWarnings("unchecked")

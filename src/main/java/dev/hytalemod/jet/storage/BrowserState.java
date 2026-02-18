@@ -18,6 +18,7 @@ public class BrowserState {
     public List<String> activeFilters = new ArrayList<>();
     public String sortMode = "category";
     public String modFilter = "";
+    public String setFilter = "";
     public int gridColumns = 7;
     public int gridRows = 8;
     public boolean showHiddenItems = false;
@@ -26,6 +27,7 @@ public class BrowserState {
     public boolean historyCollapsed = false;
     public boolean advancedInfoCollapsed = true;
     public boolean statsCollapsed = false;
+    public boolean setCollapsed = false;
 
     public BrowserState() {}
 }

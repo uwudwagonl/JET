@@ -460,6 +460,45 @@ $C.@PageOverlay {
                   }
                 }
               }
+
+              Group #ItemSetSection {
+                LayoutMode: Top;
+                Padding: (Top: 10);
+                Visible: false;
+
+                Group #SetHeader {
+                  LayoutMode: Left;
+                  Anchor: (Height: 18);
+                  Padding: (Bottom: 3);
+
+                  Button #ToggleSet {
+                    Anchor: (Width: 18, Height: 18);
+                    Style: (Hovered: (Background: #253550(0.8)));
+                    LayoutMode: Middle;
+
+                    ItemIcon #ToggleSetIcon {
+                      Anchor: (Width: 16, Height: 16);
+                      Visible: true;
+                    }
+                  }
+
+                  Label #SetLabel {
+                    Text: "Item Set";
+                    Style: (FontSize: 12, TextColor: #ffaa00, VerticalAlignment: Center, RenderBold: true);
+                    Padding: (Left: 3);
+                  }
+                }
+
+                Group #SetContent {
+                  LayoutMode: Top;
+                  Padding: (Top: 5, Left: 5);
+                  Visible: true;
+
+                  Group #SetItems {
+                    LayoutMode: Top;
+                  }
+                }
+              }
             }
           }
         }

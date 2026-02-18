@@ -33,6 +33,7 @@ import dev.hytalemod.jet.util.TooltipBuilder;
 import dev.hytalemod.jet.storage.BrowserState;
 import dev.hytalemod.jet.util.CategoryUtil;
 import dev.hytalemod.jet.util.InventoryScanner;
+import dev.hytalemod.jet.registry.SetRegistry;
 import dev.hytalemod.jet.util.SearchParser;
 import com.hypixel.hytale.server.core.entity.entities.Player;
 
@@ -75,6 +76,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     private boolean historyCollapsed; // Whether history bar is collapsed
     private boolean advancedInfoCollapsed; // Whether advanced info section is collapsed
     private boolean statsCollapsed; // Whether item stats section is collapsed
+    private boolean setCollapsed; // Whether set section is collapsed
     private static final int MAX_HISTORY_SIZE = 20;
 
     public JETGui(PlayerRef playerRef, CustomPageLifetime lifetime, String initialSearch, BrowserState saved) {
@@ -97,6 +99,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.itemPage = 0;
             this.sortMode = "name_asc";
             this.modFilter = "";
+            this.setCollapsed = false;
             this.gridColumns = DEFAULT_ITEMS_PER_ROW;
             this.gridRows = DEFAULT_MAX_ROWS;
             this.showHiddenItems = true; 
@@ -118,6 +121,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         this.itemPage = Math.max(0, s.itemPage);
         this.sortMode = s.sortMode != null ? s.sortMode : "name_asc";
         this.modFilter = s.modFilter != null ? s.modFilter : "";
+        this.setCollapsed = s.setCollapsed;
         this.gridColumns = Math.max(MIN_GRID_SIZE, Math.min(MAX_GRID_SIZE, s.gridColumns > 0 ? s.gridColumns : DEFAULT_ITEMS_PER_ROW));
         this.gridRows = Math.max(MIN_GRID_SIZE, Math.min(MAX_GRID_SIZE, s.gridRows > 0 ? s.gridRows : DEFAULT_MAX_ROWS));
         this.showHiddenItems = s.showHiddenItems;
@@ -156,6 +160,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         cmd.set("#RecipePanel #PinToHudButton #HudIcon.ItemId", "JET_Icon_Hud");
         cmd.set("#RecipePanel #AdvancedInfoSection #ToggleAdvancedInfo #ToggleAdvancedInfoIcon.ItemId", "JET_Icon_Arrow_Right");
         cmd.set("#RecipePanel #ItemStatsSection #ToggleStats #ToggleStatsIcon.ItemId", statsCollapsed ? "JET_Icon_Arrow_Right" : "JET_Icon_Chevron_Down");
+        cmd.set("#RecipePanel #ItemSetSection #ToggleSet #ToggleSetIcon.ItemId", setCollapsed ? "JET_Icon_Arrow_Right" : "JET_Icon_Chevron_Down");
         cmd.set("#RecipePagination #PrevRecipe #PrevRecipeIcon.ItemId", "JET_Icon_Arrow_Left");
         cmd.set("#RecipePagination #NextRecipe #NextRecipeIcon.ItemId", "JET_Icon_Arrow_Right");
         cmd.set("#Title #SettingsButton #SettingsIcon.ItemId", "JET_Icon_Settings");
@@ -292,6 +297,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ToggleHistory", EventData.of("ToggleHistory", "toggle"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#RecipePanel #AdvancedInfoSection #ToggleAdvancedInfo", EventData.of("ToggleAdvancedInfo", "toggle"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#RecipePanel #ItemStatsSection #ToggleStats", EventData.of("ToggleStats", "toggle"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#RecipePanel #ItemSetSection #ToggleSet", EventData.of("ToggleSet", "toggle"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ClearHistory", EventData.of("ClearHistory", "clear"), false);
 
         buildItemList(ref, cmd, events, store);
@@ -526,6 +532,14 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             sendUpdate(cmd, events, false);
         }
 
+        if (data.toggleSet != null && "toggle".equals(data.toggleSet)) {
+            setCollapsed = !setCollapsed;
+            UICommandBuilder cmd = new UICommandBuilder();
+            UIEventBuilder events = new UIEventBuilder();
+            buildRecipePanel(ref, cmd, events, store);
+            sendUpdate(cmd, events, false);
+        }
+
         if (data.clearHistory != null && "clear".equals(data.clearHistory)) {
             viewHistory.clear();
             UICommandBuilder cmd = new UICommandBuilder();
@@ -593,6 +607,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         s.itemPage = itemPage;
         s.sortMode = sortMode != null ? sortMode : "category";
         s.modFilter = modFilter != null ? modFilter : "";
+        s.setCollapsed = setCollapsed;
         s.gridColumns = gridColumns;
         s.gridRows = gridRows;
         s.showHiddenItems = showHiddenItems;
@@ -676,6 +691,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         // Pre-compute allowed item IDs for the active pack filter
         Set<String> modFilterItems = JETPlugin.getInstance().getItemRegistry().getItemIdsForPack(modFilter);
 
+
         // Filter items by search, category, mod, and quality
         for (Map.Entry<String, Item> entry : JETPlugin.ITEMS.entrySet()) {
             Item item = entry.getValue();
@@ -684,6 +700,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             if (modFilterItems != null && !modFilterItems.contains(entry.getKey())) {
                 continue;
             }
+
 
             // Quality filter check
             if (!showHiddenItems) {
@@ -1073,6 +1090,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
         // Add advanced info display
         buildAdvancedInfo(item, cmd, events, language);
+
+        // Add item set display
+        buildSetSection(cmd, events, language);
 
         // Get recipe IDs from global maps
         List<String> craftRecipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(selectedItem, Collections.emptyList());
@@ -2132,6 +2152,86 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         cmd.set("#RecipePanel #AdvancedInfoSection #AdvancedInfoText.TooltipTextSpans", advInfoMessage);
     }
 
+    private static final int SET_ITEMS_PER_ROW = 7;
+
+    private void buildSetSection(UICommandBuilder cmd, UIEventBuilder events, String language) {
+        SetRegistry setRegistry = JETPlugin.getInstance().getSetRegistry();
+        String setName = selectedItem != null ? setRegistry.getSetForItem(selectedItem) : null;
+
+        if (setName == null) {
+            cmd.set("#RecipePanel #ItemSetSection.Visible", false);
+            return;
+        }
+
+        cmd.set("#RecipePanel #ItemSetSection.Visible", true);
+        cmd.set("#RecipePanel #ItemSetSection #SetContent.Visible", !setCollapsed);
+
+        String chevronItem = setCollapsed ? "JET_Icon_Arrow_Right" : "JET_Icon_Chevron_Down";
+        cmd.set("#RecipePanel #ItemSetSection #ToggleSet #ToggleSetIcon.ItemId", chevronItem);
+
+        List<String> setItems = setRegistry.getSetItems(setName);
+        String displayName = setRegistry.getDisplayName(setName);
+        cmd.set("#RecipePanel #ItemSetSection #SetLabel.TextSpans",
+                Message.raw("Item Set: " + displayName + " (" + setItems.size() + " pieces)").color("#ffaa00"));
+
+        cmd.clear("#RecipePanel #ItemSetSection #SetContent #SetItems");
+
+        if (!setCollapsed) {
+            int itemIndex = 0;
+            int rowIndex = 0;
+
+            for (int i = 0; i < setItems.size(); i++) {
+                String setItemId = setItems.get(i);
+                Item setItem = JETPlugin.ITEMS.get(setItemId);
+                if (setItem == null) continue;
+
+                // Create a new row group when needed
+                int col = itemIndex % SET_ITEMS_PER_ROW;
+                if (col == 0) {
+                    rowIndex = itemIndex / SET_ITEMS_PER_ROW;
+                    cmd.appendInline("#RecipePanel #ItemSetSection #SetContent #SetItems",
+                            "Group #SetRow" + rowIndex + " { LayoutMode: Left; Padding: (Bottom: 2); }");
+                }
+
+                String rowSel = "#RecipePanel #ItemSetSection #SetContent #SetItems[" + rowIndex + "]";
+
+                boolean isCurrent = setItemId.equals(selectedItem);
+                String bgColor = isCurrent ? "#ffffff30" : "#00000000";
+                String borderStyle = isCurrent
+                        ? "Style: (Default: (Background: " + bgColor + "), Hovered: (Background: #ffffff40), Pressed: (Background: #ffffff50));"
+                        : "Style: (Hovered: (Background: #ffffff30), Pressed: (Background: #ffffff50));";
+
+                cmd.appendInline(rowSel,
+                        "Button #SetItem" + itemIndex + " { Padding: (Right: 4, Bottom: 4); Background: (Color: " + bgColor + "); " + borderStyle +
+                        " LayoutMode: Top; Anchor: (Width: 48); " +
+                        "ItemIcon { Anchor: (Width: 36, Height: 36); Visible: true; } " +
+                        "Label { Style: (FontSize: 8, TextColor: #cccccc, HorizontalAlignment: Center); } }");
+
+                cmd.set(rowSel + "[" + col + "][0].ItemId", setItemId);
+
+                // Set truncated display name
+                String itemDisplayName = getDisplayName(setItem, language);
+                if (itemDisplayName.length() > 8) {
+                    itemDisplayName = itemDisplayName.substring(0, 7) + "..";
+                }
+                cmd.set(rowSel + "[" + col + "][1].Text", itemDisplayName);
+
+                // Tooltip with full name
+                cmd.set(rowSel + "[" + col + "].TooltipTextSpans",
+                        Message.raw(getDisplayName(setItem, language)));
+
+                // Click to navigate (unless it's the current item)
+                if (!isCurrent) {
+                    events.addEventBinding(CustomUIEventBindingType.Activating,
+                            rowSel + "[" + col + "]",
+                            EventData.of("SelectedItem", setItemId), false);
+                }
+
+                itemIndex++;
+            }
+        }
+    }
+
     private String extractNamespace(String itemId) {
         if (itemId == null) return "Unknown";
         int colonIndex = itemId.indexOf(':');
@@ -2229,6 +2329,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("ToggleAdvancedInfo", Codec.STRING), (d, v) -> d.toggleAdvancedInfo = v, d -> d.toggleAdvancedInfo)
                 .addField(new KeyedCodec<>("ToggleStats", Codec.STRING), (d, v) -> d.toggleStats = v, d -> d.toggleStats)
                 .addField(new KeyedCodec<>("OpenSettings", Codec.STRING), (d, v) -> d.openSettings = v, d -> d.openSettings)
+                .addField(new KeyedCodec<>("ToggleSet", Codec.STRING), (d, v) -> d.toggleSet = v, d -> d.toggleSet)
                 .build();
 
         private String searchQuery;
@@ -2254,6 +2355,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         private String toggleAdvancedInfo;
         private String toggleStats;
         private String openSettings;
+        private String toggleSet;
 
         public GuiData() {}
     }
