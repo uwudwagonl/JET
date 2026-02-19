@@ -77,6 +77,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     private boolean advancedInfoCollapsed; // Whether advanced info section is collapsed
     private boolean statsCollapsed; // Whether item stats section is collapsed
     private boolean setCollapsed; // Whether set section is collapsed
+    private int calcQuantity; // Desired quantity for bulk material calculator
+    private String calcSelectedIngredient = null; // Ingredient selected for inline recipe detail
     private static final int MAX_HISTORY_SIZE = 20;
 
     public JETGui(PlayerRef playerRef, CustomPageLifetime lifetime, String initialSearch, BrowserState saved) {
@@ -102,8 +104,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.setCollapsed = false;
             this.gridColumns = DEFAULT_ITEMS_PER_ROW;
             this.gridRows = DEFAULT_MAX_ROWS;
-            this.showHiddenItems = true; 
+            this.showHiddenItems = true;
             this.showSalvagerRecipes = true;
+            this.calcQuantity = 1;
         }
     }
 
@@ -113,8 +116,9 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         if (this.selectedItem != null && !JETPlugin.ITEMS.containsKey(this.selectedItem)) {
             this.selectedItem = null;
         }
-        this.activeSection = s.activeSection != null && (s.activeSection.equals("craft") || s.activeSection.equals("usage") || s.activeSection.equals("drops"))
+        this.activeSection = s.activeSection != null && (s.activeSection.equals("craft") || s.activeSection.equals("usage") || s.activeSection.equals("drops") || s.activeSection.equals("calc"))
                 ? s.activeSection : "craft";
+        this.calcQuantity = 1;
         this.craftPage = Math.max(0, s.craftPage);
         this.usagePage = Math.max(0, s.usagePage);
         this.dropsPage = Math.max(0, s.dropsPage);
@@ -266,6 +270,13 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 CustomUIEventBindingType.Activating,
                 "#RecipePanel #ObtainedFromButton",
                 EventData.of("ToggleMode", "drops"),
+                false
+        );
+
+        events.addEventBinding(
+                CustomUIEventBindingType.Activating,
+                "#RecipePanel #CalcButton",
+                EventData.of("ToggleMode", "calc"),
                 false
         );
 
@@ -444,18 +455,46 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.craftPage = 0;
             this.usagePage = 0;
             this.activeSection = "craft";
+            this.calcQuantity = 1;
+            this.calcSelectedIngredient = null;
             needsRecipeUpdate = true;
             addToHistory(data.selectedItem);
         }
 
         if (data.toggleMode != null && !data.toggleMode.isEmpty()) {
-            if ("craft".equals(data.toggleMode) || "usage".equals(data.toggleMode) || "drops".equals(data.toggleMode)) {
+            if ("craft".equals(data.toggleMode) || "usage".equals(data.toggleMode) || "drops".equals(data.toggleMode) || "calc".equals(data.toggleMode)) {
                 this.activeSection = data.toggleMode;
                 this.craftPage = 0;
                 this.usagePage = 0;
                 this.dropsPage = 0;
+                this.calcSelectedIngredient = null;
                 needsRecipeUpdate = true;
             }
+        }
+
+        if (data.calcQuantityChange != null) {
+            if ("inc".equals(data.calcQuantityChange)) {
+                calcQuantity = Math.min(9999, calcQuantity + 1);
+                needsRecipeUpdate = true;
+            } else if ("inc10".equals(data.calcQuantityChange)) {
+                calcQuantity = Math.min(9999, calcQuantity + 10);
+                needsRecipeUpdate = true;
+            } else if ("dec".equals(data.calcQuantityChange)) {
+                calcQuantity = Math.max(1, calcQuantity - 1);
+                needsRecipeUpdate = true;
+            } else if ("dec10".equals(data.calcQuantityChange)) {
+                calcQuantity = Math.max(1, calcQuantity - 10);
+                needsRecipeUpdate = true;
+            }
+        }
+
+        if (data.calcIngredientSelect != null) {
+            if (data.calcIngredientSelect.equals(this.calcSelectedIngredient)) {
+                this.calcSelectedIngredient = null; // toggle off
+            } else {
+                this.calcSelectedIngredient = data.calcIngredientSelect;
+            }
+            needsRecipeUpdate = true;
         }
 
         if (data.activeSection != null && !data.activeSection.isEmpty() && !data.activeSection.equals(this.activeSection)) {
@@ -1142,6 +1181,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             buildCraftSection(ref, cmd, events, craftRecipeIds);
         } else if ("usage".equals(activeSection)) {
             buildUsageSection(ref, cmd, events, usageRecipeIds);
+        } else if ("calc".equals(activeSection)) {
+            buildCalcSection(cmd, events, craftRecipeIds);
         } else {
             buildDropsSection(ref, cmd, events, dropSources);
         }
@@ -2241,6 +2282,234 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         return "Common";
     }
 
+    private void buildCalcSection(UICommandBuilder cmd, UIEventBuilder events, List<String> craftRecipeIds) {
+        cmd.clear("#RecipePanel #RecipeListContainer #RecipeList");
+        cmd.set("#RecipePagination #PrevRecipe.Visible", false);
+        cmd.set("#RecipePagination #NextRecipe.Visible", false);
+
+        if (craftRecipeIds.isEmpty()) {
+            cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw("Not craftable"));
+            return;
+        }
+
+        // Dedicated quantity controls row
+        cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_CalcControls.ui");
+        cmd.set("#CalcControls #CalcMinusIcon.ItemId", "JET_Calc_Minus");
+        cmd.set("#CalcControls #CalcPlusIcon.ItemId", "JET_Calc_Plus");
+        cmd.set("#CalcControls #CalcQtyLabel.Text", String.valueOf(calcQuantity));
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#CalcControls #CalcMinus10", EventData.of("CalcQuantityChange", "dec10"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#CalcControls #CalcMinus", EventData.of("CalcQuantityChange", "dec"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#CalcControls #CalcPlus", EventData.of("CalcQuantityChange", "inc"), false);
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#CalcControls #CalcPlus10", EventData.of("CalcQuantityChange", "inc10"), false);
+
+        Map<String, Long> materials = calculateRawMaterials(selectedItem, calcQuantity);
+
+        int matCount = materials.size();
+        String pageText = matCount > 0 ? matCount + " material" + (matCount == 1 ? "" : "s") : "No ingredients";
+        cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw(pageText).color("#aaaaaa"));
+
+        if (materials.isEmpty()) {
+            return;
+        }
+
+        String language = playerRef.getLanguage();
+        int itemIndex = 0;
+        int rowIndex = 0;
+
+        for (Map.Entry<String, Long> entry : materials.entrySet()) {
+            String matId = entry.getKey();
+            long qty = entry.getValue();
+
+            boolean isResourceType = matId.startsWith("resource:");
+            String displayId = isResourceType ? matId.substring(9) : matId;
+
+            String displayName;
+            if (isResourceType) {
+                displayName = displayId.replace("_", " ");
+            } else {
+                Item matItem = JETPlugin.ITEMS.get(displayId);
+                displayName = matItem != null ? getDisplayName(matItem, language) : displayId.replace("_", " ");
+            }
+
+            String qtyStr = "x" + (qty >= 1000 ? String.format("%,d", qty) : String.valueOf(qty));
+            String shortName = displayName.length() > 8 ? displayName.substring(0, 7) + ".." : displayName;
+            boolean isSelected = displayId.equals(calcSelectedIngredient);
+
+            int col = itemIndex % SET_ITEMS_PER_ROW;
+            if (col == 0) {
+                rowIndex = itemIndex / SET_ITEMS_PER_ROW;
+                cmd.appendInline("#RecipePanel #RecipeListContainer #RecipeList",
+                        "Group #CalcRow" + rowIndex + " { LayoutMode: Left; Padding: (Bottom: 2); }");
+            }
+
+            // +1 to skip the CalcControls row at index [0]
+            String rowSel = "#RecipePanel #RecipeListContainer #RecipeList[" + (rowIndex + 1) + "]";
+
+            String bgColor = isSelected ? "#ffffff25" : "#00000000";
+            cmd.appendInline(rowSel,
+                    "Button #CalcItem" + itemIndex + " { Padding: (Right: 4, Bottom: 4);" +
+                    " Background: (Color: " + bgColor + ");" +
+                    " Style: (Hovered: (Background: #ffffff30), Pressed: (Background: #ffffff50));" +
+                    " LayoutMode: Top; Anchor: (Width: 48); " +
+                    "ItemIcon { Anchor: (Width: 36, Height: 36); Visible: true; } " +
+                    "Label { Style: (FontSize: 8, TextColor: #cccccc, HorizontalAlignment: Center); } " +
+                    "Label { Style: (FontSize: 9, TextColor: #ffcc66, HorizontalAlignment: Center); } }");
+
+            if (!isResourceType) {
+                cmd.set(rowSel + "[" + col + "][0].ItemId", displayId);
+                // Fire CalcIngredientSelect instead of SelectedItem — stays in calc, no navigation
+                events.addEventBinding(CustomUIEventBindingType.Activating,
+                        rowSel + "[" + col + "]",
+                        EventData.of("CalcIngredientSelect", displayId), false);
+            }
+
+            cmd.set(rowSel + "[" + col + "][1].Text", shortName);
+            cmd.set(rowSel + "[" + col + "][2].Text", qtyStr);
+            cmd.set(rowSel + "[" + col + "].TooltipTextSpans", Message.raw(displayName + "  " + qtyStr));
+
+            itemIndex++;
+        }
+
+        // Inline detail panel for selected ingredient
+        if (calcSelectedIngredient != null) {
+            long neededQty = materials.getOrDefault(calcSelectedIngredient, 0L);
+            if (neededQty > 0) {
+                Item ingItem = JETPlugin.ITEMS.get(calcSelectedIngredient);
+                String ingDisplayName = ingItem != null ? getDisplayName(ingItem, language) : calcSelectedIngredient.replace("_", " ");
+                List<String> ingRecipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(calcSelectedIngredient, Collections.emptyList());
+                CraftingRecipe ingRecipe = ingRecipeIds.isEmpty() ? null : JETPlugin.RECIPES.get(ingRecipeIds.get(0));
+
+                // Separator
+                cmd.appendInline("#RecipePanel #RecipeListContainer #RecipeList",
+                        "Group { Anchor: (Height: 1); Background: (Color: #555555(0.7)); Padding: (Top: 10, Bottom: 2); }");
+                // nextIdx = [0](controls) + [1..rowIndex+1](rows) + [rowIndex+2](sep) = rowIndex + 3 for first detail item
+                int nextIdx = rowIndex + 3;
+
+                if (ingRecipe == null) {
+                    cmd.appendInline("#RecipePanel #RecipeListContainer #RecipeList",
+                            "Group #CalcDetailMsg { Padding: (Top: 4, Bottom: 4); " +
+                            "Label { Style: (FontSize: 10, TextColor: #888888, HorizontalAlignment: Center); } }");
+                    cmd.set("#RecipePanel #RecipeListContainer #RecipeList[" + nextIdx + "][0].Text",
+                            ingDisplayName + " — no crafting recipe");
+                } else {
+                    List<MaterialQuantity> inputs = getRecipeInputs(ingRecipe);
+                    MaterialQuantity[] outputs = ingRecipe.getOutputs();
+                    int outputQty = (outputs != null && outputs.length > 0 && outputs[0] != null) ? outputs[0].getQuantity() : 1;
+                    long craftsNeeded = (neededQty + outputQty - 1) / outputQty;
+
+                    // Header
+                    cmd.appendInline("#RecipePanel #RecipeListContainer #RecipeList",
+                            "Group #CalcDetailHead { Padding: (Top: 4, Bottom: 6); " +
+                            "Label { Style: (FontSize: 10, TextColor: #aaaaaa, HorizontalAlignment: Center); } }");
+                    cmd.set("#RecipePanel #RecipeListContainer #RecipeList[" + nextIdx + "][0].Text",
+                            ingDisplayName + "  ×" + craftsNeeded + " craft" + (craftsNeeded == 1 ? "" : "s"));
+                    nextIdx++;
+
+                    // Input items row
+                    cmd.appendInline("#RecipePanel #RecipeListContainer #RecipeList",
+                            "Group #CalcDetailInputs { LayoutMode: Left; }");
+                    String inputsSel = "#RecipePanel #RecipeListContainer #RecipeList[" + nextIdx + "]";
+
+                    int j = 0;
+                    for (MaterialQuantity input : inputs) {
+                        if (input.getItemId() != null) {
+                            long totalQty = (long) input.getQuantity() * craftsNeeded;
+                            cmd.appendInline(inputsSel,
+                                    "Group #CalcIn" + j + " { LayoutMode: Top; Padding: (Right: 6); " +
+                                    "ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } " +
+                                    "Label { Style: (FontSize: 9, TextColor: #ffcc66, HorizontalAlignment: Center); } }");
+                            cmd.set(inputsSel + "[" + j + "][0].ItemId", input.getItemId());
+                            cmd.set(inputsSel + "[" + j + "][1].Text", "x" + totalQty);
+                            j++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private Map<String, Long> calculateRawMaterials(String itemId, int quantity) {
+        Map<String, Long> materials = new LinkedHashMap<>();
+
+        List<String> recipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(itemId, Collections.emptyList());
+        if (recipeIds.isEmpty()) return materials;
+
+        CraftingRecipe recipe = JETPlugin.RECIPES.get(recipeIds.get(0));
+        if (recipe == null) return materials;
+
+        // Find how many the recipe produces per craft
+        int outputQty = 1;
+        MaterialQuantity[] outputs = recipe.getOutputs();
+        if (outputs != null) {
+            for (MaterialQuantity output : outputs) {
+                if (output != null && itemId.equals(output.getItemId())) {
+                    outputQty = Math.max(1, output.getQuantity());
+                    break;
+                }
+            }
+        }
+
+        long craftsNeeded = ((long) quantity + outputQty - 1) / outputQty;
+
+        // Same inputs the Craft tab shows, scaled by craftsNeeded
+        for (MaterialQuantity input : getRecipeInputs(recipe)) {
+            if (input.getItemId() != null) {
+                materials.merge(input.getItemId(), (long) input.getQuantity() * craftsNeeded, Long::sum);
+            } else if (input.getResourceTypeId() != null) {
+                materials.merge("resource:" + input.getResourceTypeId(), (long) input.getQuantity() * craftsNeeded, Long::sum);
+            }
+        }
+
+        return materials;
+    }
+
+    private void resolveIngredients(String itemId, long needed, Map<String, Long> materials, Set<String> visited) {
+        if (visited.contains(itemId)) {
+            // Circular reference protection — treat as raw material
+            materials.merge(itemId, needed, Long::sum);
+            return;
+        }
+
+        List<String> recipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(itemId, Collections.emptyList());
+        if (recipeIds.isEmpty()) {
+            // Raw material — no crafting recipe
+            materials.merge(itemId, needed, Long::sum);
+            return;
+        }
+
+        CraftingRecipe recipe = JETPlugin.getInstance().getRecipeRegistry().get(recipeIds.get(0));
+        if (recipe == null) {
+            materials.merge(itemId, needed, Long::sum);
+            return;
+        }
+
+        // Find how many of this item the recipe produces
+        long outputQty = 1;
+        MaterialQuantity[] outputs = recipe.getOutputs();
+        if (outputs != null) {
+            for (MaterialQuantity output : outputs) {
+                if (output != null && itemId.equals(output.getItemId())) {
+                    outputQty = Math.max(1, output.getQuantity());
+                    break;
+                }
+            }
+        }
+
+        long craftsNeeded = (needed + outputQty - 1) / outputQty; // ceiling division
+
+        visited.add(itemId);
+        List<MaterialQuantity> inputs = getRecipeInputs(recipe);
+        for (MaterialQuantity input : inputs) {
+            if (input.getItemId() != null) {
+                resolveIngredients(input.getItemId(), (long) input.getQuantity() * craftsNeeded, materials, visited);
+            } else if (input.getResourceTypeId() != null) {
+                String key = "resource:" + input.getResourceTypeId();
+                materials.merge(key, (long) input.getQuantity() * craftsNeeded, Long::sum);
+            }
+        }
+        visited.remove(itemId);
+    }
+
     private List<MaterialQuantity> getRecipeInputs(CraftingRecipe recipe) {
         List<MaterialQuantity> result = new ArrayList<>();
         Object inputsObj = null;
@@ -2330,6 +2599,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("ToggleStats", Codec.STRING), (d, v) -> d.toggleStats = v, d -> d.toggleStats)
                 .addField(new KeyedCodec<>("OpenSettings", Codec.STRING), (d, v) -> d.openSettings = v, d -> d.openSettings)
                 .addField(new KeyedCodec<>("ToggleSet", Codec.STRING), (d, v) -> d.toggleSet = v, d -> d.toggleSet)
+                .addField(new KeyedCodec<>("CalcQuantityChange", Codec.STRING), (d, v) -> d.calcQuantityChange = v, d -> d.calcQuantityChange)
+                .addField(new KeyedCodec<>("CalcIngredientSelect", Codec.STRING), (d, v) -> d.calcIngredientSelect = v, d -> d.calcIngredientSelect)
                 .build();
 
         private String searchQuery;
@@ -2356,6 +2627,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         private String toggleStats;
         private String openSettings;
         private String toggleSet;
+        private String calcQuantityChange;
+        private String calcIngredientSelect;
 
         public GuiData() {}
     }

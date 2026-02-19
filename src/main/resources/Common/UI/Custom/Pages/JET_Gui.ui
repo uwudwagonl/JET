@@ -554,6 +554,23 @@ $C.@PageOverlay {
             Background: #2a2a2a(0.6);
             Padding: (Full: 8);
           }
+
+          Group {
+            Anchor: (Width: 10);
+          }
+
+          TextButton #CalcButton {
+            Anchor: (Width: 100, Height: 40);
+            Text: "Calc";
+            Style: TextButtonStyle(
+              Default: (LabelStyle: (FontSize: 13, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
+              Hovered: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.8)),
+              Pressed: (LabelStyle: (FontSize: 14, TextColor: #ffffff, RenderBold: false, HorizontalAlignment: Center, VerticalAlignment: Center), Background: #3a3a3a(0.9)),
+              Sounds: $C.@ButtonSounds
+            );
+            Background: #2a2a2a(0.6);
+            Padding: (Full: 8);
+          }
         }
 
         Group #RecipeListContainer {
