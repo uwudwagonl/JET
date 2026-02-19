@@ -282,6 +282,7 @@ $C.@PageOverlay {
         Visible: false;
 
         Group #SelectedItemBar {
+          FlexWeight: 1;
           LayoutMode: Top;
           Padding: (Full: 10, Bottom: 5);
           Background: (Color: #1a1a1a(0.6));

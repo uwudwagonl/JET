@@ -1177,14 +1177,16 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         events.addEventBinding(CustomUIEventBindingType.Activating, "#RecipePanel #GiveItemStackButton",
                 EventData.of("GiveItemStack", selectedItem), false);
 
+        boolean noSource = craftRecipeIds.isEmpty() && usageRecipeIds.isEmpty() && dropSources.isEmpty();
+
         if ("craft".equals(activeSection)) {
-            buildCraftSection(ref, cmd, events, craftRecipeIds);
+            buildCraftSection(ref, cmd, events, craftRecipeIds, noSource);
         } else if ("usage".equals(activeSection)) {
-            buildUsageSection(ref, cmd, events, usageRecipeIds);
+            buildUsageSection(ref, cmd, events, usageRecipeIds, noSource);
         } else if ("calc".equals(activeSection)) {
-            buildCalcSection(cmd, events, craftRecipeIds);
+            buildCalcSection(cmd, events, craftRecipeIds, noSource);
         } else {
-            buildDropsSection(ref, cmd, events, dropSources);
+            buildDropsSection(ref, cmd, events, dropSources, noSource);
         }
         events.addEventBinding(
                 CustomUIEventBindingType.Activating,
@@ -1194,7 +1196,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         );
     }
 
-    private void buildCraftSection(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, List<String> recipeIds) {
+    private void buildCraftSection(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, List<String> recipeIds, boolean noSource) {
         cmd.clear("#RecipePanel #RecipeListContainer #RecipeList");
 
         // Filter recipes based on salvager setting
@@ -1211,7 +1213,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
 
         if (filteredRecipeIds.isEmpty()) {
-            cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw("No recipes"));
+            appendEmptyMessage(cmd, noSource ? "Uncraftable — no source found" : "No crafting recipe", noSource);
             return;
         }
 
@@ -1239,7 +1241,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
     }
 
-    private void buildUsageSection(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, List<String> recipeIds) {
+    private void buildUsageSection(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, List<String> recipeIds, boolean noSource) {
         cmd.clear("#RecipePanel #RecipeListContainer #RecipeList");
 
         // Filter recipes based on salvager setting
@@ -1256,7 +1258,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
 
         if (filteredRecipeIds.isEmpty()) {
-            cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw("No recipes"));
+            appendEmptyMessage(cmd, noSource ? "Uncraftable — no source found" : "Not used in any recipe", noSource);
             return;
         }
 
@@ -1285,11 +1287,11 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
     }
 
-    private void buildDropsSection(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, List<String> dropListIds) {
+    private void buildDropsSection(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, List<String> dropListIds, boolean noSource) {
         cmd.clear("#RecipePanel #RecipeListContainer #RecipeList");
 
         if (dropListIds.isEmpty()) {
-            cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw("No drop sources"));
+            appendEmptyMessage(cmd, noSource ? "Uncraftable — no source found" : "Not dropped by any mob", noSource);
             return;
         }
 
@@ -1463,6 +1465,15 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         return String.join(" ", parts);
     }
 
+    private void appendEmptyMessage(UICommandBuilder cmd, String message, boolean highlight) {
+        String color = highlight ? "#ff9966" : "#888888";
+        cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw(""));
+        cmd.appendInline("#RecipePanel #RecipeListContainer #RecipeList",
+                "Group #NoSource { Padding: (Top: 24, Bottom: 8); " +
+                "Label { Style: (FontSize: 12, TextColor: " + color + ", HorizontalAlignment: Center); } }");
+        cmd.set("#RecipePanel #RecipeListContainer #RecipeList[0][0].Text", message);
+    }
+
     private void buildRecipeDisplay(UICommandBuilder cmd, UIEventBuilder events, CraftingRecipe recipe, String rSel, Ref<EntityStore> ref) {
         // Resolve recipe title from primary output item name
         String recipeTitle = null;
@@ -1601,6 +1612,29 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     private String stripColorTags(String text) {
         if (text == null) return "";
         return text.replaceAll("<color[^>]*>", "").replaceAll("</color>", "");
+    }
+
+    private String wordWrap(String text, int maxChars) {
+        StringBuilder result = new StringBuilder();
+        for (String line : text.split("\n", -1)) {
+            if (result.length() > 0) result.append("\n");
+            if (line.length() <= maxChars) {
+                result.append(line);
+                continue;
+            }
+            StringBuilder current = new StringBuilder();
+            for (String word : line.split(" ")) {
+                if (current.length() > 0 && current.length() + 1 + word.length() > maxChars) {
+                    result.append(current).append("\n");
+                    current = new StringBuilder(word);
+                } else {
+                    if (current.length() > 0) current.append(" ");
+                    current.append(word);
+                }
+            }
+            if (current.length() > 0) result.append(current);
+        }
+        return result.toString();
     }
 
     private String getDisplayName(Item item, String language) {
@@ -1751,10 +1785,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             if (descKey != null && !descKey.isEmpty()) {
                 String description = I18nModule.get().getMessage(language, descKey);
                 if (description != null && !description.isEmpty()) {
-                    description = stripColorTags(description);
-                    if (description.length() > 150) {
-                        description = description.substring(0, 147) + "...";
-                    }
+                    description = wordWrap(stripColorTags(description), 50);
                     tooltip.nl();
                     tooltip.append(description, "#aaaaaa");
                     tooltip.nl();
@@ -1931,7 +1962,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             if (descKey != null && !descKey.isEmpty()) {
                 String description = I18nModule.get().getMessage(language, descKey);
                 if (description != null && !description.isEmpty() && !description.equals(descKey)) {
-                    description = stripColorTags(description);
+                    description = wordWrap(stripColorTags(description), 58);
                     generalParts.add(Message.raw("  " + description + "\n").color("#aaaaaa"));
                     hasGeneralInfo = true;
                 }
@@ -2282,20 +2313,18 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         return "Common";
     }
 
-    private void buildCalcSection(UICommandBuilder cmd, UIEventBuilder events, List<String> craftRecipeIds) {
+    private void buildCalcSection(UICommandBuilder cmd, UIEventBuilder events, List<String> craftRecipeIds, boolean noSource) {
         cmd.clear("#RecipePanel #RecipeListContainer #RecipeList");
         cmd.set("#RecipePagination #PrevRecipe.Visible", false);
         cmd.set("#RecipePagination #NextRecipe.Visible", false);
 
         if (craftRecipeIds.isEmpty()) {
-            cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw("Not craftable"));
+            appendEmptyMessage(cmd, noSource ? "Uncraftable — no source found" : "No crafting recipe", noSource);
             return;
         }
 
         // Dedicated quantity controls row
         cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_CalcControls.ui");
-        cmd.set("#CalcControls #CalcMinusIcon.ItemId", "JET_Calc_Minus");
-        cmd.set("#CalcControls #CalcPlusIcon.ItemId", "JET_Calc_Plus");
         cmd.set("#CalcControls #CalcQtyLabel.Text", String.valueOf(calcQuantity));
         events.addEventBinding(CustomUIEventBindingType.Activating, "#CalcControls #CalcMinus10", EventData.of("CalcQuantityChange", "dec10"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#CalcControls #CalcMinus", EventData.of("CalcQuantityChange", "dec"), false);
