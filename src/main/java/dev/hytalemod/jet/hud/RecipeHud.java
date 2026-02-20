@@ -45,7 +45,10 @@ public class RecipeHud extends CustomUIHud {
             return;
         }
 
-        RecipeHudComponent component = store.ensureAndGetComponent(ref, RecipeHudComponent.getComponentType());
+        RecipeHudComponent component = store.getComponent(ref, RecipeHudComponent.getComponentType());
+        if (component == null) {
+            return;
+        }
         AtomicInteger index = new AtomicInteger(0);
 
         for (String recipeId : component.pinnedRecipes) {

@@ -22,6 +22,7 @@ import com.hypixel.hytale.server.core.ui.builder.EventData;
 import com.hypixel.hytale.server.core.ui.builder.UICommandBuilder;
 import com.hypixel.hytale.server.core.ui.builder.UIEventBuilder;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
+import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import com.hypixel.hytale.server.core.asset.type.item.config.ItemQuality;
 import com.hypixel.hytale.protocol.Color;
@@ -44,6 +45,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.LinkedList;
 import java.util.logging.Level;
 
@@ -623,12 +625,16 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
                 if (component.hasRecipe(recipeId)) {
                     playerRef.sendMessage(Message.raw("[JET] Pinned recipe to HUD").color("#55FF55"));
+                    if (component.pinnedRecipes.size() > 1) {
+                        playerRef.sendMessage(Message.raw("[JET] Tip: Install MultipleHUD for multiple pinned recipes to display correctly").color("#AAAAAA"));
+                    }
                 } else {
                     playerRef.sendMessage(Message.raw("[JET] Unpinned recipe from HUD").color("#FFAA00"));
                 }
 
-                // Update HUD
-                HudUtil.updateHud(ref);
+                // Update HUD deferred so it runs outside the current event handler context
+                World world = ((EntityStore) store.getExternalData()).getWorld();
+                CompletableFuture.runAsync(() -> HudUtil.updateHud(ref), world);
                 needsRecipeUpdate = true;
             }
         }

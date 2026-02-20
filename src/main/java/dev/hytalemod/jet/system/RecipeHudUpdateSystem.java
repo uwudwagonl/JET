@@ -5,12 +5,14 @@ import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.event.events.entity.LivingEntityInventoryChangeEvent;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
+import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import dev.hytalemod.jet.component.RecipeHudComponent;
 import dev.hytalemod.jet.hud.HudUtil;
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -59,7 +61,8 @@ public class RecipeHudUpdateSystem {
         }
 
         lastUpdateTime.put(uuid, now);
-        HudUtil.updateHud(ref);
+        World world = ((EntityStore) store.getExternalData()).getWorld();
+        CompletableFuture.runAsync(() -> HudUtil.updateHud(ref), world);
     }
 
     /**

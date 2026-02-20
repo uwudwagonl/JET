@@ -28,7 +28,6 @@ public class HudUtil {
             return;
         }
 
-        // Update the HUD
         player.getHudManager().setCustomHud(playerRef, new RecipeHud(playerRef));
     }
 
