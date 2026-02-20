@@ -15,7 +15,7 @@ public class BrowserState {
     public int usagePage = 0;
     public int dropsPage = 0;
     public int itemPage = 0;
-    public List<String> activeFilters = new ArrayList<>();
+    public String categoryFilter = "All";
     public String sortMode = "category";
     public String modFilter = "";
     public String setFilter = "";

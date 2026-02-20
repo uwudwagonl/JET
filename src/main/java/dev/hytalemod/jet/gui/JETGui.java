@@ -67,7 +67,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     private int usagePage;
     private int dropsPage;
     private int itemPage; // Pagination for item list
-    private Set<ItemCategory> activeFilters; // Active category filters
+    private String categoryFilter; // Active category filter display name ("All", "Tools", etc.)
     private String sortMode; // "category", "name_asc", "name_desc", "quality"
     private String modFilter; // Filter by asset pack/mod
     private int gridColumns; // Configurable grid columns
@@ -85,7 +85,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
     public JETGui(PlayerRef playerRef, CustomPageLifetime lifetime, String initialSearch, BrowserState saved) {
         super(playerRef, lifetime, GuiData.CODEC);
-        this.activeFilters = new HashSet<>();
         this.viewHistory = new LinkedList<>();
         this.historyCollapsed = false;
         this.advancedInfoCollapsed = true; // Collapsed by default
@@ -103,6 +102,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.itemPage = 0;
             this.sortMode = "name_asc";
             this.modFilter = "";
+            this.categoryFilter = "All";
             this.setCollapsed = false;
             this.gridColumns = DEFAULT_ITEMS_PER_ROW;
             this.gridRows = DEFAULT_MAX_ROWS;
@@ -127,19 +127,12 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         this.itemPage = Math.max(0, s.itemPage);
         this.sortMode = s.sortMode != null ? s.sortMode : "name_asc";
         this.modFilter = s.modFilter != null ? s.modFilter : "";
+        this.categoryFilter = s.categoryFilter != null ? s.categoryFilter : "All";
         this.setCollapsed = s.setCollapsed;
         this.gridColumns = Math.max(MIN_GRID_SIZE, Math.min(MAX_GRID_SIZE, s.gridColumns > 0 ? s.gridColumns : DEFAULT_ITEMS_PER_ROW));
         this.gridRows = Math.max(MIN_GRID_SIZE, Math.min(MAX_GRID_SIZE, s.gridRows > 0 ? s.gridRows : DEFAULT_MAX_ROWS));
         this.showHiddenItems = s.showHiddenItems;
         this.showSalvagerRecipes = s.showSalvagerRecipes;
-        this.activeFilters.clear();
-        if (s.activeFilters != null) {
-            for (String name : s.activeFilters) {
-                try {
-                    this.activeFilters.add(ItemCategory.valueOf(name));
-                } catch (IllegalArgumentException ignored) {}
-            }
-        }
         this.viewHistory.clear();
         if (s.viewHistory != null) {
             for (String itemId : s.viewHistory) {
@@ -295,13 +288,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         events.addEventBinding(CustomUIEventBindingType.Activating, "#PrevItemPage", EventData.of("ItemPageChange", "prev"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#NextItemPage", EventData.of("ItemPageChange", "next"), false);
 
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterTool", EventData.of("CategoryFilter", "TOOL"), false);
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterWeapon", EventData.of("CategoryFilter", "WEAPON"), false);
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterArmor", EventData.of("CategoryFilter", "ARMOR"), false);
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterConsumable", EventData.of("CategoryFilter", "CONSUMABLE"), false);
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterBlock", EventData.of("CategoryFilter", "BLOCK"), false);
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterCraftable", EventData.of("CategoryFilter", "CRAFTABLE"), false);
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterNonCraftable", EventData.of("CategoryFilter", "NON_CRAFTABLE"), false);
+        events.addEventBinding(CustomUIEventBindingType.ValueChanged, "#CategoryFilter", EventData.of("@CategoryFilter", "#CategoryFilter.Value"), false);
 
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ClearFilters", EventData.of("ClearFilters", "true"), false);
 
@@ -363,32 +350,22 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             needsRecipeUpdate = true;
         }
 
-        if (data.categoryFilter != null && !data.categoryFilter.isEmpty()) {
-            try {
-                ItemCategory category = ItemCategory.valueOf(data.categoryFilter);
-                if (activeFilters.contains(category)) {
-                    activeFilters.remove(category);
-                } else {
-                    activeFilters.add(category);
-                }
-                this.itemPage = 0;
-                this.selectedItem = null;
-                needsItemUpdate = true;
-                needsRecipeUpdate = true;
-            } catch (IllegalArgumentException e) {
-            }
+        if (data.categoryFilter != null && !data.categoryFilter.equals(this.categoryFilter)) {
+            this.categoryFilter = data.categoryFilter;
+            this.itemPage = 0;
+            this.selectedItem = null;
+            needsItemUpdate = true;
+            needsRecipeUpdate = true;
         }
 
         if (data.clearFilters != null && "true".equals(data.clearFilters)) {
-            if (!activeFilters.isEmpty() || (modFilter != null && !modFilter.isEmpty())) {
-                activeFilters.clear();
-                modFilter = "";
-                sortMode = "name_asc";
-                this.itemPage = 0;
-                this.selectedItem = null;
-                needsItemUpdate = true;
-                needsRecipeUpdate = true;
-            }
+            categoryFilter = "All";
+            modFilter = "";
+            sortMode = "name_asc";
+            this.itemPage = 0;
+            this.selectedItem = null;
+            needsItemUpdate = true;
+            needsRecipeUpdate = true;
         }
 
         if (data.sortMode != null && !data.sortMode.equals(this.sortMode)) {
@@ -652,15 +629,12 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         s.itemPage = itemPage;
         s.sortMode = sortMode != null ? sortMode : "category";
         s.modFilter = modFilter != null ? modFilter : "";
+        s.categoryFilter = categoryFilter != null ? categoryFilter : "All";
         s.setCollapsed = setCollapsed;
         s.gridColumns = gridColumns;
         s.gridRows = gridRows;
         s.showHiddenItems = showHiddenItems;
         s.showSalvagerRecipes = showSalvagerRecipes;
-        s.activeFilters = new ArrayList<>();
-        for (ItemCategory c : activeFilters) {
-            s.activeFilters.add(c.name());
-        }
         s.viewHistory = new ArrayList<>(viewHistory);
         s.historyCollapsed = historyCollapsed;
         s.advancedInfoCollapsed = advancedInfoCollapsed;
@@ -736,6 +710,17 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         // Pre-compute allowed item IDs for the active pack filter
         Set<String> modFilterItems = JETPlugin.getInstance().getItemRegistry().getItemIdsForPack(modFilter);
 
+        // Pre-compute inventory cache if "Can Craft" filter is active
+        boolean isCanCraftFilter = "Can Craft".equals(categoryFilter);
+        Player canCraftPlayer = null;
+        Map<String, Integer> inventoryCache = null;
+        if (isCanCraftFilter) {
+            canCraftPlayer = store.getComponent(ref, Player.getComponentType());
+            if (canCraftPlayer != null) {
+                inventoryCache = InventoryScanner.getAllItemCounts(canCraftPlayer);
+            }
+        }
+        ItemCategory singleCategory = displayNameToCategory(categoryFilter);
 
         // Filter items by search, category, mod, and quality
         for (Map.Entry<String, Item> entry : JETPlugin.ITEMS.entrySet()) {
@@ -745,7 +730,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             if (modFilterItems != null && !modFilterItems.contains(entry.getKey())) {
                 continue;
             }
-
 
             // Quality filter check
             if (!showHiddenItems) {
@@ -766,7 +750,14 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
 
             boolean matchesSearch = searchQuery.isEmpty() || matchesSearch(entry.getKey(), item);
-            boolean matchesCategory = activeFilters.isEmpty() || matchesActiveFilters(item);
+            boolean matchesCategory;
+            if (isCanCraftFilter) {
+                matchesCategory = canCraftWithInventory(item, canCraftPlayer, inventoryCache);
+            } else if (singleCategory != null) {
+                matchesCategory = CategoryUtil.matchesCategory(item, singleCategory);
+            } else {
+                matchesCategory = true; // "All" or unknown → no filter
+            }
 
             if (matchesSearch && matchesCategory) {
                 results.add(entry);
@@ -871,14 +862,16 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         cmd.set("#PrevItemPage.Visible", itemPage > 0);
         cmd.set("#NextItemPage.Visible", itemPage < totalPages - 1);
 
-        // Update filter button text with brackets to show active state
-        cmd.set("#FilterTool.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.TOOL) ? "#18E314" : "#FFFFFF");
-        cmd.set("#FilterWeapon.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.WEAPON) ?   "#18E314" : "#FFFFFF");
-        cmd.set("#FilterArmor.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.ARMOR) ?   "#18E314" : "#FFFFFF");
-        cmd.set("#FilterConsumable.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.CONSUMABLE) ?   "#18E314" : "#FFFFFF");
-        cmd.set("#FilterBlock.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.BLOCK) ?   "#18E314" : "#FFFFFF");
-        cmd.set("#FilterCraftable.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.CRAFTABLE) ?   "#18E314" : "#FFFFFF");
-        cmd.set("#FilterNonCraftable.Style.Default.LabelStyle.TextColor", activeFilters.contains(ItemCategory.NON_CRAFTABLE) ?   "#18E314" : "#FFFFFF");
+        // Update category filter dropdown
+        List<com.hypixel.hytale.server.core.ui.DropdownEntryInfo> categoryEntries = new ArrayList<>();
+        for (String name : new String[]{"All", "Tools", "Weapons", "Armor", "Consumables", "Blocks", "Craftable", "Non-Craftable", "Can Craft"}) {
+            categoryEntries.add(new com.hypixel.hytale.server.core.ui.DropdownEntryInfo(
+                    com.hypixel.hytale.server.core.ui.LocalizableString.fromString(name), name));
+        }
+        cmd.set("#CategoryFilter.Entries", categoryEntries);
+        cmd.set("#CategoryFilter.Value", categoryFilter != null ? categoryFilter : "All");
+        cmd.set("#SortMode.Value", sortMode != null ? sortMode : "name_asc");
+        cmd.set("#ModFilter.Value", modFilter != null ? modFilter : "");
     }
 
 
@@ -911,11 +904,43 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
     }
 
-    private boolean matchesActiveFilters(Item item) {
-        for (ItemCategory category : activeFilters) {
-            if (CategoryUtil.matchesCategory(item, category)) {
-                return true;
+    private static ItemCategory displayNameToCategory(String name) {
+        if (name == null) return null;
+        switch (name) {
+            case "Tools": return ItemCategory.TOOL;
+            case "Weapons": return ItemCategory.WEAPON;
+            case "Armor": return ItemCategory.ARMOR;
+            case "Consumables": return ItemCategory.CONSUMABLE;
+            case "Blocks": return ItemCategory.BLOCK;
+            case "Craftable": return ItemCategory.CRAFTABLE;
+            case "Non-Craftable": return ItemCategory.NON_CRAFTABLE;
+            default: return null;
+        }
+    }
+
+    private boolean canCraftWithInventory(Item item, Player player, Map<String, Integer> inventoryCache) {
+        if (player == null || inventoryCache == null) return false;
+        List<String> recipeIds = JETPlugin.ITEM_TO_RECIPES.get(item.getId());
+        if (recipeIds == null || recipeIds.isEmpty()) return false;
+        for (String recipeId : recipeIds) {
+            CraftingRecipe recipe = JETPlugin.RECIPES.get(recipeId);
+            if (recipe == null) continue;
+            List<MaterialQuantity> inputs = getRecipeInputs(recipe);
+            if (inputs.isEmpty()) continue;
+            boolean canCraft = true;
+            for (MaterialQuantity input : inputs) {
+                int needed = input.getQuantity();
+                int have;
+                if (input.getItemId() != null) {
+                    have = inventoryCache.getOrDefault(input.getItemId(), 0);
+                } else if (input.getResourceTypeId() != null) {
+                    have = InventoryScanner.countResourceTypeInInventory(player, input.getResourceTypeId());
+                } else {
+                    have = 0;
+                }
+                if (have < needed) { canCraft = false; break; }
             }
+            if (canCraft) return true;
         }
         return false;
     }
@@ -1115,10 +1140,22 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     private void buildRecipePanel(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         if (selectedItem == null || selectedItem.isEmpty()) {
             cmd.set("#RecipePanel.Visible", false);
+            Anchor hideRecipe = new Anchor();
+            hideRecipe.setWidth(Value.of(0));
+            cmd.setObject("#RecipePanel.Anchor", hideRecipe);
+            Anchor fullItem = new Anchor();
+            fullItem.setWidth(Value.of(1360));
+            cmd.setObject("#ItemSection.Anchor", fullItem);
             return;
         }
 
         cmd.set("#RecipePanel.Visible", true);
+        Anchor showRecipe = new Anchor();
+        showRecipe.setWidth(Value.of(480));
+        cmd.setObject("#RecipePanel.Anchor", showRecipe);
+        Anchor narrowItem = new Anchor();
+        narrowItem.setWidth(Value.of(880));
+        cmd.setObject("#ItemSection.Anchor", narrowItem);
 
         // Use global ITEMS map
         Item item = JETPlugin.ITEMS.get(selectedItem);
@@ -2616,7 +2653,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 .addField(new KeyedCodec<>("ToggleMode", Codec.STRING), (d, v) -> d.toggleMode = v, d -> d.toggleMode)
                 .addField(new KeyedCodec<>("PinAction", Codec.STRING), (d, v) -> d.pinAction = v, d -> d.pinAction)
                 .addField(new KeyedCodec<>("ItemPageChange", Codec.STRING), (d, v) -> d.itemPageChange = v, d -> d.itemPageChange)
-                .addField(new KeyedCodec<>("CategoryFilter", Codec.STRING), (d, v) -> d.categoryFilter = v, d -> d.categoryFilter)
+                .addField(new KeyedCodec<>("@CategoryFilter", Codec.STRING), (d, v) -> d.categoryFilter = v, d -> d.categoryFilter)
                 .addField(new KeyedCodec<>("ClearFilters", Codec.STRING), (d, v) -> d.clearFilters = v, d -> d.clearFilters)
                 .addField(new KeyedCodec<>("@SortMode", Codec.STRING), (d, v) -> d.sortMode = v, d -> d.sortMode)
                 .addField(new KeyedCodec<>("@ModFilter", Codec.STRING), (d, v) -> d.modFilter = v, d -> d.modFilter)

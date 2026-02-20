@@ -42,82 +42,37 @@ $C.@PageOverlay {
       LayoutMode: Left;
 
       Group #ItemSection {
-        FlexWeight: 2;
+        Anchor: (Width: 1360);
         LayoutMode: Top;
         Padding: (Left: 10, Right: 5);
 
         Group #FilterSection {
           LayoutMode: Left;
-          Padding: (Left: 8, Right: 8, Top: 8, Bottom: 5);
+          Padding: (Left: 8, Right: 8, Top: 6, Bottom: 6);
           Background: (Color: #1a1a1a(0.4));
-          Anchor: (Height: 50);
-
-          TextButton #FilterTool {
-            FlexWeight: 1;
-            Anchor: (Height: 36, Right: 5);
-            Text: "Tools";
-            Style: TextButtonStyle (
-                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
-            );
-          }
-          TextButton #FilterWeapon {
-            FlexWeight: 1;
-            Anchor: (Height: 36, Right: 5);
-            Text: "Weapons";
-            Style: TextButtonStyle (
-                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
-            );
-          }
-          TextButton #FilterArmor {
-            FlexWeight: 1;
-            Anchor: (Height: 36, Right: 5);
-            Text: "Armor";
-            Style: TextButtonStyle (
-                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
-            );
-          }
-          TextButton #FilterConsumable {
-            FlexWeight: 1;
-            Anchor: (Height: 36, Right: 5);
-            Text: "Consumables";
-            Style: TextButtonStyle (
-                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
-            );
-          }
-          TextButton #FilterBlock {
-            FlexWeight: 1;
-            Anchor: (Height: 36, Right: 5);
-            Text: "Blocks";
-            Style: TextButtonStyle (
-                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
-            );
-          }
-          TextButton #FilterCraftable {
-            FlexWeight: 1;
-            Anchor: (Height: 36, Right: 5);
-            Text: "Craftable";
-            Style: TextButtonStyle (
-                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
-            );
-          }
-          TextButton #FilterNonCraftable {
-            FlexWeight: 1;
-            Anchor: (Height: 36, Right: 10);
-            Text: "Non-Craftable";
-            Style: TextButtonStyle (
-                Default: (LabelStyle: (TextColor: #FFFFFF, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
-            );
-          }
+          Anchor: (Height: 44);
 
           Button #ClearFilters {
-            Anchor: (Width: 36, Height: 36);
+            Anchor: (Width: 30, Height: 30, Right: 8);
             Style: (Hovered: (Background: #253550(0.8)), Pressed: (Background: #304060(0.9)));
             LayoutMode: Middle;
 
             ItemIcon #ClearFiltersIcon {
-              Anchor: (Width: 28, Height: 28);
+              Anchor: (Width: 22, Height: 22);
               Visible: true;
             }
+          }
+
+          Group { FlexWeight: 1; }
+
+          Label {
+            Text: "Filter:";
+            Style: (FontSize: 14, TextColor: #aaaaaa, VerticalAlignment: Center);
+            Padding: (Right: 6);
+          }
+
+          $C.@DropdownBox #CategoryFilter {
+            Anchor: (Width: 180, Height: 28);
           }
         }
 
@@ -276,7 +231,7 @@ $C.@PageOverlay {
       }
 
       Group #RecipePanel {
-        FlexWeight: 1;
+        Anchor: (Width: 480);
         LayoutMode: Top;
         Padding: (Left: 5);
         Visible: false;
