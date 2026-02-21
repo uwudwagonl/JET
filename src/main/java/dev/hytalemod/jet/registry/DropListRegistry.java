@@ -55,7 +55,7 @@ public class DropListRegistry {
                 extractItemIds(container, dropListId);
             }
         } catch (Exception e) {
-            // Silently ignore - not all drop lists have extractable contents
+            // Best effort: some drop lists don't expose extractable contents
         }
     }
 
@@ -86,7 +86,7 @@ public class DropListRegistry {
                 tryExtractFromContainer(container, dropListId);
             }
         } catch (Exception e) {
-            // Silently ignore extraction errors
+            // Best effort: skip entries that fail extraction
         }
     }
 
@@ -111,7 +111,7 @@ public class DropListRegistry {
                 }
             }
         } catch (Exception e) {
-            // Silently ignore
+            // Best effort: return null if no supported extraction path is available
         }
 
         return null;
@@ -136,7 +136,7 @@ public class DropListRegistry {
                 }
             }
         } catch (Exception e) {
-            // Silently ignore - not all containers support getAllDrops
+            // Best effort: some container types don't support getAllDrops
         }
     }
 

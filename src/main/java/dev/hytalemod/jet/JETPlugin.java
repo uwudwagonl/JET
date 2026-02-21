@@ -190,7 +190,7 @@ public class JETPlugin extends JavaPlugin {
             jetLogWriter = new PrintWriter(new FileWriter(logFile.toFile(), true), true);
 
         } catch (Exception e) {
-            // Silently fail - can't log if logger setup failed
+            // Best effort: continue startup even if the dedicated JET log file can't be initialized
         }
     }
 
