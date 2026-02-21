@@ -45,7 +45,7 @@ public class InventoryScanner {
 
             return totalCount;
         } catch (Exception e) {
-            // Silently fail if inventory access isn't available
+            // Best effort: return 0 when inventory access isn't available in this context
             return 0;
         }
     }
@@ -127,7 +127,7 @@ public class InventoryScanner {
                 }
             });
         } catch (Exception ignored) {
-            // Silently fail if forEach isn't available
+            // Best effort: skip this container when forEach isn't available
         }
     }
 
