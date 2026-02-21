@@ -32,20 +32,26 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
         "none",
         "JET_Bg_Default",
         "JET_Bg_Dark",
+        "JET_Bg_Crimson",
+        "JET_Bg_Emerald",
+        "JET_Bg_Galaxy",
         "JET_Bg_Parchment",
+        "JET_Bg_Sepia",
         "JET_Bg_Stone",
-        "JET_Bg_Wood",
-        "JET_Bg_Galaxy"
+        "JET_Bg_Wood"
     };
 
     private static final String[] BUILTIN_BACKGROUND_NAMES = {
         "None (Default)",
         "Blue Gradient",
         "Dark",
+        "Crimson",
+        "Emerald",
+        "Galaxy",
         "Parchment",
+        "Sepia",
         "Stone",
-        "Wood",
-        "Galaxy"
+        "Wood"
     };
 
     public JETSettingsGui(PlayerRef playerRef, JETPlugin plugin) {

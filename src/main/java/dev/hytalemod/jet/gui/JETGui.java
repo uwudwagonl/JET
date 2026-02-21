@@ -150,6 +150,36 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Gui.ui");
 
+        // Background theme: tile 64x64 ItemIcons across the browser.
+        // Single large ItemIcon always shows red X; tiling at small proven size works.
+        dev.hytalemod.jet.config.JETConfig jetConfig = JETPlugin.getInstance().getConfig();
+        String bg = jetConfig.backgroundImage;
+        JETPlugin.getInstance().log(Level.INFO, "[JET BG] backgroundImage='" + bg + "'");
+        if (bg != null && !bg.equals("none") && bg.startsWith("JET_Bg_")) {
+            boolean exists = JETPlugin.ITEMS.containsKey(bg);
+            JETPlugin.getInstance().log(Level.INFO, "[JET BG] item exists: " + exists);
+            if (exists) {
+                cmd.set("#DefaultBg.Visible", false); // hide default solid-color bg when a theme is active
+                final int tileSize = 64;
+                final int cols = (int) Math.ceil(1400.0 / tileSize); // 22
+                final int rows = (int) Math.ceil(700.0 / tileSize);  // 11
+                cmd.set("#BgContainer.Visible", true);
+                for (int r = 0; r < rows; r++) {
+                    StringBuilder row = new StringBuilder("Group { LayoutMode: Left; Anchor: (Height: " + tileSize + "); ");
+                    for (int c = 0; c < cols; c++) {
+                        row.append("ItemIcon { Anchor: (Width: ").append(tileSize).append(", Height: ").append(tileSize).append("); Visible: true; } ");
+                    }
+                    row.append("}");
+                    cmd.appendInline("#BgContainer", row.toString());
+                    for (int c = 0; c < cols; c++) {
+                        cmd.set("#BgContainer[" + r + "][" + c + "].ItemId", bg);
+                    }
+                }
+                JETPlugin.getInstance().log(Level.INFO, "[JET BG] Tiled " + (cols * rows) + " icons @ " + tileSize + "px");
+            } else {
+                JETPlugin.getInstance().log(Level.WARNING, "[JET BG] Item '" + bg + "' not in JETPlugin.ITEMS");
+            }
+        }
 
         cmd.set("#ClearFilters #ClearFiltersIcon.ItemId", "JET_Icon_Clear");
         cmd.set("#ItemPagination #PrevItemPage #PrevItemPageIcon.ItemId", "JET_Icon_Arrow_Left");
@@ -430,6 +460,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
 
         if (data.selectedItem != null && !data.selectedItem.isEmpty()) {
+            boolean wasSelected = this.selectedItem != null;
             this.selectedItem = data.selectedItem;
             this.craftPage = 0;
             this.usagePage = 0;
@@ -437,6 +468,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.calcQuantity = 1;
             this.calcSelectedIngredient = null;
             needsRecipeUpdate = true;
+            // Rebuild item grid so card widths adjust for the narrowed ItemSection
+            if (!wasSelected) needsItemUpdate = true;
             addToHistory(data.selectedItem);
         }
 
@@ -567,12 +600,14 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
 
         if (data.historyItemClick != null && !data.historyItemClick.isEmpty()) {
+            boolean wasSelected = this.selectedItem != null;
             this.selectedItem = data.historyItemClick;
             this.craftPage = 0;
             this.usagePage = 0;
             this.activeSection = "craft";
             addToHistory(data.historyItemClick);
             needsRecipeUpdate = true;
+            if (!wasSelected) needsItemUpdate = true;
         }
 
         if (needsItemUpdate || needsRecipeUpdate) {
@@ -802,8 +837,11 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             cmd.append("#ItemCards[" + row + "]", "Pages/JET_ItemIcon.ui");
             String sel = "#ItemCards[" + row + "][" + col + "]";
 
-            // Scale item card based on grid size - container is ~920px wide (accounting for scrollbar and padding)
-            int cardWidth = 920 / gridColumns;
+            // Scale item card based on grid size.
+            // When recipe panel is visible, ItemSection shrinks to 880px (~850px usable after padding+scrollbar).
+            // When hidden, ItemSection is 1360px (~1330px usable) — fill the full width.
+            int availableWidth = (selectedItem != null) ? 850 : 1330;
+            int cardWidth = availableWidth / gridColumns;
             int iconSize = Math.max(32, Math.min(64, cardWidth - 20));
 
             // Set button anchor with dynamic width

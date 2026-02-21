@@ -7,10 +7,27 @@ $C = "../Common.ui";
     Default: (LabelStyle: (TextColor: #18E314, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
 );
 $C.@PageOverlay {
-  $C.@Container {
+  Group {
     Anchor: (Width: 1400, Height: 700);
 
-    #Title {
+    // Background tile container — Java fills this with 64x64 ItemIcons when a theme is active.
+    // Must be first child so it renders behind everything else.
+    Group #BgContainer {
+      Visible: false;
+      LayoutMode: Top;
+    }
+
+    // Default background shown when no theme is selected. Solid color only — textures cause red X.
+    // No Anchor so it fills the full 1400x700 parent (including title area).
+    Group #DefaultBg {
+      Visible: true;
+      Background: (Color: #1a1f30(1.0));
+    }
+
+    Group #Title {
+      Anchor: (Width: 1400, Height: 38, Top: 0);
+      Padding: (Top: 7);
+      Background: (Color: #111827(1.0));
       Group {
         LayoutMode: Left;
 
@@ -38,7 +55,9 @@ $C.@PageOverlay {
       }
     }
 
-    #Content {
+    Group #Content {
+      Anchor: (Top: 38);
+      Padding: (Full: 9);
       LayoutMode: Left;
 
       Group #ItemSection {
