@@ -1557,6 +1557,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
     private void buildRecipeDisplay(UICommandBuilder cmd, UIEventBuilder events, CraftingRecipe recipe, String rSel, Ref<EntityStore> ref) {
         // Resolve recipe title from primary output item name
+//        applyBgToRecipeEntry(cmd, rSel);
         String recipeTitle = null;
         MaterialQuantity[] outputs = recipe.getOutputs();
         if (outputs != null && outputs.length > 0 && outputs[0] != null && outputs[0].getItemId() != null) {
@@ -2856,4 +2857,26 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
         }
     }
+//    private void applyBgToRecipeEntry(UICommandBuilder cmd, String rSel) {
+//        dev.hytalemod.jet.config.JETConfig jetConfig = JETPlugin.getInstance().getConfig();
+//        String bg = jetConfig.backgroundImage;
+//        if (bg == null || bg.equals("none") || !bg.startsWith("JET_Bg_") || !JETPlugin.ITEMS.containsKey(bg)) return;
+//
+//        final int tileSize = 32;
+//        final int cols = (int) Math.ceil(460.0 / tileSize); // recipe panel is ~460px wide
+//        final int rows = 3; // recipe entries are short, 3 rows is plenty
+//
+//        cmd.set(rSel + " #RecipeBg.Visible", true);
+//        for (int r = 0; r < rows; r++) {
+//            StringBuilder row = new StringBuilder("Group { LayoutMode: Left; Anchor: (Height: " + tileSize + "); ");
+//            for (int c = 0; c < cols; c++) {
+//                row.append("ItemIcon { Anchor: (Width: ").append(tileSize).append(", Height: ").append(tileSize).append("); Visible: true; } ");
+//            }
+//            row.append("}");
+//            cmd.appendInline(rSel + " #RecipeBg", row.toString());
+//            for (int c = 0; c < cols; c++) {
+//                cmd.set(rSel + " #RecipeBg[" + r + "][" + c + "].ItemId", bg);
+//            }
+//        }
+//    }
 }

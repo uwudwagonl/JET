@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.hytalemod"
-version = "1.10.0"
+version = "1.10.1"
 description = "JET Item Browser - Browse all items with search, categories, and filtering"
 
 repositories {
