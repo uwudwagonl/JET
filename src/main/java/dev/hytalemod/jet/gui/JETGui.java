@@ -81,6 +81,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
     private boolean setCollapsed; // Whether set section is collapsed
     private int calcQuantity; // Desired quantity for bulk material calculator
     private String calcSelectedIngredient = null; // Ingredient selected for inline recipe detail
+    private Set<String> calcCollapsedNodes = new HashSet<>(); // Collapsed tree branches in calc
+    private Map<String, Integer> calcRecipeChoices = new HashMap<>(); // Per-item recipe index for multi-recipe items
     private static final int MAX_HISTORY_SIZE = 20;
 
     public JETGui(PlayerRef playerRef, CustomPageLifetime lifetime, String initialSearch, BrowserState saved) {
@@ -467,6 +469,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             this.activeSection = "craft";
             this.calcQuantity = 1;
             this.calcSelectedIngredient = null;
+            this.calcCollapsedNodes.clear();
+            this.calcRecipeChoices.clear();
             needsRecipeUpdate = true;
             // Rebuild item grid so card widths adjust for the narrowed ItemSection
             if (!wasSelected) needsItemUpdate = true;
@@ -480,6 +484,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 this.usagePage = 0;
                 this.dropsPage = 0;
                 this.calcSelectedIngredient = null;
+                this.calcCollapsedNodes.clear();
+                this.calcRecipeChoices.clear();
                 needsRecipeUpdate = true;
             }
         }
@@ -501,12 +507,34 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         }
 
         if (data.calcIngredientSelect != null) {
-            if (data.calcIngredientSelect.equals(this.calcSelectedIngredient)) {
-                this.calcSelectedIngredient = null; // toggle off
+            String val = data.calcIngredientSelect;
+            if (val.startsWith("tree:")) {
+                // Expand/collapse tree node
+                String nodeId = val.substring(5);
+                if (calcCollapsedNodes.contains(nodeId)) {
+                    calcCollapsedNodes.remove(nodeId);
+                } else {
+                    calcCollapsedNodes.add(nodeId);
+                }
+                needsRecipeUpdate = true;
+            } else if (val.startsWith("cycle:")) {
+                // Cycle recipe for a multi-recipe item
+                String cycleItemId = val.substring(6);
+                List<String> recipes = JETPlugin.ITEM_TO_RECIPES.getOrDefault(cycleItemId, Collections.emptyList());
+                if (recipes.size() > 1) {
+                    int current = calcRecipeChoices.getOrDefault(cycleItemId, 0);
+                    calcRecipeChoices.put(cycleItemId, (current + 1) % recipes.size());
+                }
+                needsRecipeUpdate = true;
             } else {
-                this.calcSelectedIngredient = data.calcIngredientSelect;
+                // Legacy ingredient select (toggle)
+                if (val.equals(this.calcSelectedIngredient)) {
+                    this.calcSelectedIngredient = null;
+                } else {
+                    this.calcSelectedIngredient = val;
+                }
+                needsRecipeUpdate = true;
             }
-            needsRecipeUpdate = true;
         }
 
         if (data.activeSection != null && !data.activeSection.isEmpty() && !data.activeSection.equals(this.activeSection)) {
@@ -1693,7 +1721,22 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
     private String stripColorTags(String text) {
         if (text == null) return "";
-        return text.replaceAll("<color[^>]*>", "").replaceAll("</color>", "");
+        // Strip color tags
+        text = text.replaceAll("<color[^>]*>", "").replaceAll("</color>", "");
+        // Replace <item is="ItemId"/> with the item's display name
+        java.util.regex.Matcher itemMatcher = java.util.regex.Pattern.compile("<item\\s+is=\"([^\"]+)\"\\s*/>").matcher(text);
+        StringBuffer sb = new StringBuffer();
+        while (itemMatcher.find()) {
+            String itemId = itemMatcher.group(1);
+            Item item = JETPlugin.ITEMS.get(itemId);
+            String name = item != null ? getDisplayName(item, playerRef.getLanguage()) : itemId.replace("_", " ");
+            itemMatcher.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(name));
+        }
+        itemMatcher.appendTail(sb);
+        text = sb.toString();
+        // Strip any remaining XML-like tags
+        text = text.replaceAll("<[^>]+/>", "").replaceAll("<[^>]+>", "");
+        return text;
     }
 
     private String wordWrap(String text, int maxChars) {
@@ -2405,7 +2448,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             return;
         }
 
-        // Dedicated quantity controls row
+        // Quantity controls row [0]
         cmd.append("#RecipePanel #RecipeListContainer #RecipeList", "Pages/JET_CalcControls.ui");
         cmd.set("#CalcControls #CalcQtyLabel.Text", String.valueOf(calcQuantity));
         events.addEventBinding(CustomUIEventBindingType.Activating, "#CalcControls #CalcMinus10", EventData.of("CalcQuantityChange", "dec10"), false);
@@ -2413,129 +2456,297 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
         events.addEventBinding(CustomUIEventBindingType.Activating, "#CalcControls #CalcPlus", EventData.of("CalcQuantityChange", "inc"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#CalcControls #CalcPlus10", EventData.of("CalcQuantityChange", "inc10"), false);
 
-        Map<String, Long> materials = calculateRawMaterials(selectedItem, calcQuantity);
+        String listSel = "#RecipePanel #RecipeListContainer #RecipeList";
+        String language = playerRef.getLanguage();
+        String[] depthColors = {"#88ccff", "#88ff88", "#ffcc66", "#ff8888", "#cc88ff"};
 
-        int matCount = materials.size();
-        String pageText = matCount > 0 ? matCount + " material" + (matCount == 1 ? "" : "s") : "No ingredients";
-        cmd.set("#RecipePanel #PageInfo.TextSpans", Message.raw(pageText).color("#aaaaaa"));
+        // --- Part A: Crafting Tree ---
+        List<TreeNode> tree = buildCraftingTree(selectedItem, calcQuantity);
 
-        if (materials.isEmpty()) {
+        long intermediateCount = tree.stream().filter(n -> n.isCraftable).count();
+        long rawCount = tree.stream().filter(n -> !n.isCraftable).count();
+        cmd.set("#RecipePanel #PageInfo.TextSpans",
+                Message.join(new Message[]{
+                    Message.raw(rawCount + " raw").color("#aaaaaa"),
+                    Message.raw("  "),
+                    Message.raw(intermediateCount + " craftable").color("#55aaff")
+                }));
+
+        if (tree.isEmpty()) {
             return;
         }
 
-        String language = playerRef.getLanguage();
-        int itemIndex = 0;
-        int rowIndex = 0;
+        int appendIdx = 1; // [0] = controls, appendInline items start at [1]
 
-        for (Map.Entry<String, Long> entry : materials.entrySet()) {
-            String matId = entry.getKey();
-            long qty = entry.getValue();
-
-            boolean isResourceType = matId.startsWith("resource:");
-            String displayId = isResourceType ? matId.substring(9) : matId;
+        for (int i = 0; i < tree.size(); i++) {
+            TreeNode node = tree.get(i);
+            String depthColor = depthColors[Math.min(node.depth, depthColors.length - 1)];
+            int indentPx = node.depth * 16;
 
             String displayName;
-            if (isResourceType) {
-                displayName = displayId.replace("_", " ");
+            if (node.isResourceType) {
+                displayName = node.itemId.replace("_", " ");
             } else {
-                Item matItem = JETPlugin.ITEMS.get(displayId);
-                displayName = matItem != null ? getDisplayName(matItem, language) : displayId.replace("_", " ");
+                Item item = JETPlugin.ITEMS.get(node.itemId);
+                displayName = item != null ? getDisplayName(item, language) : node.itemId.replace("_", " ");
             }
 
-            String qtyStr = "x" + (qty >= 1000 ? String.format("%,d", qty) : String.valueOf(qty));
-            String shortName = displayName.length() > 8 ? displayName.substring(0, 7) + ".." : displayName;
-            boolean isSelected = displayId.equals(calcSelectedIngredient);
+            String qtyStr = "x" + (node.quantity >= 1000 ? String.format("%,d", node.quantity) : String.valueOf(node.quantity));
 
-            int col = itemIndex % SET_ITEMS_PER_ROW;
-            if (col == 0) {
-                rowIndex = itemIndex / SET_ITEMS_PER_ROW;
-                cmd.appendInline("#RecipePanel #RecipeListContainer #RecipeList",
-                        "Group #CalcRow" + rowIndex + " { LayoutMode: Left; Padding: (Bottom: 2); }");
+            // Build chevron prefix for craftable nodes
+            String chevron = "";
+            if (node.isCraftable) {
+                chevron = node.isExpanded ? "v " : "> ";
             }
 
-            // +1 to skip the CalcControls row at index [0]
-            String rowSel = "#RecipePanel #RecipeListContainer #RecipeList[" + (rowIndex + 1) + "]";
+            String nameColor = node.isCraftable ? "#88ccff" : "#cccccc";
 
-            String bgColor = isSelected ? "#ffffff25" : "#00000000";
-            cmd.appendInline(rowSel,
-                    "Button #CalcItem" + itemIndex + " { Padding: (Right: 4, Bottom: 4);" +
-                    " Background: (Color: " + bgColor + ");" +
-                    " Style: (Hovered: (Background: #ffffff30), Pressed: (Background: #ffffff50));" +
-                    " LayoutMode: Top; Anchor: (Width: 48); " +
-                    "ItemIcon { Anchor: (Width: 36, Height: 36); Visible: true; } " +
-                    "Label { Style: (FontSize: 8, TextColor: #cccccc, HorizontalAlignment: Center); } " +
-                    "Label { Style: (FontSize: 9, TextColor: #ffcc66, HorizontalAlignment: Center); } }");
+            // Build tree row — exact same pattern as working version, just with Button for craftable
+            StringBuilder rowBuilder = new StringBuilder();
+            if (node.isCraftable) {
+                rowBuilder.append("Button #TreeRow").append(i).append(" { LayoutMode: Left; Padding: (Bottom: 2); Background: (Color: #00000000); Style: (Hovered: (Background: #ffffff15), Pressed: (Background: #ffffff25)); ");
+            } else {
+                rowBuilder.append("Group #TreeRow").append(i).append(" { LayoutMode: Left; Padding: (Bottom: 2); ");
+            }
+            if (indentPx > 0) {
+                rowBuilder.append("Group { Anchor: (Width: ").append(indentPx).append("); } ");
+            }
+            rowBuilder.append("Group { Anchor: (Width: 3, Height: 26); Background: (Color: ").append(depthColor).append("); } ");
+            if (!node.isResourceType) {
+                rowBuilder.append("ItemIcon { Anchor: (Width: 26, Height: 26); Visible: true; } ");
+            }
+            rowBuilder.append("Label { Style: (FontSize: 10, TextColor: ").append(nameColor).append("); } ");
+            rowBuilder.append("Label { Style: (FontSize: 10, TextColor: #ffcc66); } ");
+            rowBuilder.append("}");
 
-            if (!isResourceType) {
-                cmd.set(rowSel + "[" + col + "][0].ItemId", displayId);
-                // Fire CalcIngredientSelect instead of SelectedItem — stays in calc, no navigation
+            cmd.appendInline(listSel, rowBuilder.toString());
+            String rowSel = listSel + "[" + appendIdx + "]";
+
+            int childIdx = 0;
+            if (indentPx > 0) childIdx++;
+            childIdx++; // color bar
+
+            if (!node.isResourceType) {
+                cmd.set(rowSel + "[" + childIdx + "].ItemId", node.itemId);
+                childIdx++;
+            }
+
+            // Name with recipe indicator for multi-recipe
+            String nameText = chevron + displayName;
+            if (node.isCraftable && node.recipeCount > 1) {
+                nameText += " [" + (node.recipeIndex + 1) + "/" + node.recipeCount + "]";
+            }
+            cmd.set(rowSel + "[" + childIdx + "].Text", nameText);
+            childIdx++;
+
+            cmd.set(rowSel + "[" + childIdx + "].Text", qtyStr);
+
+            if (node.isCraftable) {
+                String action = node.recipeCount > 1 ? "cycle:" : "tree:";
                 events.addEventBinding(CustomUIEventBindingType.Activating,
-                        rowSel + "[" + col + "]",
-                        EventData.of("CalcIngredientSelect", displayId), false);
+                        rowSel,
+                        EventData.of("CalcIngredientSelect", action + node.itemId), false);
             }
 
-            cmd.set(rowSel + "[" + col + "][1].Text", shortName);
-            cmd.set(rowSel + "[" + col + "][2].Text", qtyStr);
-            cmd.set(rowSel + "[" + col + "].TooltipTextSpans", Message.raw(displayName + "  " + qtyStr));
+            cmd.set(rowSel + ".TooltipTextSpans", Message.raw(displayName + "  " + qtyStr));
 
-            itemIndex++;
+            appendIdx++;
         }
 
-        // Inline detail panel for selected ingredient
-        if (calcSelectedIngredient != null) {
-            long neededQty = materials.getOrDefault(calcSelectedIngredient, 0L);
-            if (neededQty > 0) {
-                Item ingItem = JETPlugin.ITEMS.get(calcSelectedIngredient);
-                String ingDisplayName = ingItem != null ? getDisplayName(ingItem, language) : calcSelectedIngredient.replace("_", " ");
-                List<String> ingRecipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(calcSelectedIngredient, Collections.emptyList());
-                CraftingRecipe ingRecipe = ingRecipeIds.isEmpty() ? null : JETPlugin.RECIPES.get(ingRecipeIds.get(0));
+        // --- Part B: Separator ---
+        cmd.appendInline(listSel,
+                "Group { Anchor: (Height: 2); Background: (Color: #555555); }");
+        appendIdx++;
 
-                // Separator
-                cmd.appendInline("#RecipePanel #RecipeListContainer #RecipeList",
-                        "Group { Anchor: (Height: 1); Background: (Color: #555555(0.7)); Padding: (Top: 10, Bottom: 2); }");
-                // nextIdx = [0](controls) + [1..rowIndex+1](rows) + [rowIndex+2](sep) = rowIndex + 3 for first detail item
-                int nextIdx = rowIndex + 3;
+        // --- Part C: Raw Materials Summary ---
+        Map<String, Long> rawMaterials = new LinkedHashMap<>();
+        resolveIngredients(selectedItem, (long) calcQuantity, rawMaterials, new HashSet<>());
+        cmd.appendInline(listSel,
+                "Group { Padding: (Bottom: 6); Label { Style: (FontSize: 10, TextColor: #aaaaaa, HorizontalAlignment: Center); } }");
+        cmd.set(listSel + "[" + appendIdx + "][0].Text", "Raw Materials");
+        appendIdx++;
 
-                if (ingRecipe == null) {
-                    cmd.appendInline("#RecipePanel #RecipeListContainer #RecipeList",
-                            "Group #CalcDetailMsg { Padding: (Top: 4, Bottom: 4); " +
-                            "Label { Style: (FontSize: 10, TextColor: #888888, HorizontalAlignment: Center); } }");
-                    cmd.set("#RecipePanel #RecipeListContainer #RecipeList[" + nextIdx + "][0].Text",
-                            ingDisplayName + " — no crafting recipe");
+        if (!rawMaterials.isEmpty()) {
+            int matItemIndex = 0;
+            int matRowIndex = 0;
+
+            for (Map.Entry<String, Long> entry : rawMaterials.entrySet()) {
+                String matId = entry.getKey();
+                long qty = entry.getValue();
+
+                boolean isResourceType = matId.startsWith("resource:");
+                String displayId = isResourceType ? matId.substring(9) : matId;
+
+                String displayName;
+                if (isResourceType) {
+                    displayName = displayId.replace("_", " ");
                 } else {
-                    List<MaterialQuantity> inputs = getRecipeInputs(ingRecipe);
-                    MaterialQuantity[] outputs = ingRecipe.getOutputs();
-                    int outputQty = (outputs != null && outputs.length > 0 && outputs[0] != null) ? outputs[0].getQuantity() : 1;
-                    long craftsNeeded = (neededQty + outputQty - 1) / outputQty;
+                    Item matItem = JETPlugin.ITEMS.get(displayId);
+                    displayName = matItem != null ? getDisplayName(matItem, language) : displayId.replace("_", " ");
+                }
 
-                    // Header
-                    cmd.appendInline("#RecipePanel #RecipeListContainer #RecipeList",
-                            "Group #CalcDetailHead { Padding: (Top: 4, Bottom: 6); " +
-                            "Label { Style: (FontSize: 10, TextColor: #aaaaaa, HorizontalAlignment: Center); } }");
-                    cmd.set("#RecipePanel #RecipeListContainer #RecipeList[" + nextIdx + "][0].Text",
-                            ingDisplayName + "  ×" + craftsNeeded + " craft" + (craftsNeeded == 1 ? "" : "s"));
-                    nextIdx++;
+                String qtyStr = "x" + (qty >= 1000 ? String.format("%,d", qty) : String.valueOf(qty));
+                String shortName = displayName.length() > 8 ? displayName.substring(0, 7) + ".." : displayName;
 
-                    // Input items row
-                    cmd.appendInline("#RecipePanel #RecipeListContainer #RecipeList",
-                            "Group #CalcDetailInputs { LayoutMode: Left; }");
-                    String inputsSel = "#RecipePanel #RecipeListContainer #RecipeList[" + nextIdx + "]";
+                int col = matItemIndex % SET_ITEMS_PER_ROW;
+                if (col == 0) {
+                    matRowIndex = matItemIndex / SET_ITEMS_PER_ROW;
+                    cmd.appendInline(listSel,
+                            "Group #RawRow" + matRowIndex + " { LayoutMode: Left; Padding: (Bottom: 2); }");
+                    appendIdx++;
+                }
 
-                    int j = 0;
-                    for (MaterialQuantity input : inputs) {
-                        if (input.getItemId() != null) {
-                            long totalQty = (long) input.getQuantity() * craftsNeeded;
-                            cmd.appendInline(inputsSel,
-                                    "Group #CalcIn" + j + " { LayoutMode: Top; Padding: (Right: 6); " +
-                                    "ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } " +
-                                    "Label { Style: (FontSize: 9, TextColor: #ffcc66, HorizontalAlignment: Center); } }");
-                            cmd.set(inputsSel + "[" + j + "][0].ItemId", input.getItemId());
-                            cmd.set(inputsSel + "[" + j + "][1].Text", "x" + totalQty);
-                            j++;
-                        }
+                String matRowSel = listSel + "[" + (appendIdx - 1) + "]";
+
+                cmd.appendInline(matRowSel,
+                        "Group #RawItem" + matItemIndex + " { LayoutMode: Top; Padding: (Right: 4, Bottom: 4); Anchor: (Width: 48); " +
+                        "ItemIcon { Anchor: (Width: 36, Height: 36); Visible: true; } " +
+                        "Label { Style: (FontSize: 8, TextColor: #cccccc, HorizontalAlignment: Center); } " +
+                        "Label { Style: (FontSize: 9, TextColor: #ffcc66, HorizontalAlignment: Center); } }");
+
+                if (!isResourceType) {
+                    cmd.set(matRowSel + "[" + col + "][0].ItemId", displayId);
+                }
+
+                cmd.set(matRowSel + "[" + col + "][1].Text", shortName);
+                cmd.set(matRowSel + "[" + col + "][2].Text", qtyStr);
+                cmd.set(matRowSel + "[" + col + "].TooltipTextSpans", Message.raw(displayName + "  " + qtyStr));
+
+                matItemIndex++;
+            }
+        }
+    }
+
+    // --- Crafting Tree ---
+
+    /**
+     * Get non-salvager recipes for an item, with the user's selected recipe index applied.
+     * Returns null if no valid (non-salvager) recipe exists.
+     */
+    private CraftingRecipe getNonSalvagerRecipe(String itemId, List<String> recipeIds) {
+        // Filter to non-salvager recipes
+        List<String> filtered = new ArrayList<>();
+        for (String rid : recipeIds) {
+            CraftingRecipe r = JETPlugin.RECIPES.get(rid);
+            if (r != null && !isSalvagerRecipe(r)) {
+                filtered.add(rid);
+            }
+        }
+        if (filtered.isEmpty()) return null;
+        int choiceIdx = calcRecipeChoices.getOrDefault(itemId, 0);
+        if (choiceIdx >= filtered.size()) choiceIdx = 0;
+        return JETPlugin.RECIPES.get(filtered.get(choiceIdx));
+    }
+
+    private int getNonSalvagerRecipeCount(List<String> recipeIds) {
+        int count = 0;
+        for (String rid : recipeIds) {
+            CraftingRecipe r = JETPlugin.RECIPES.get(rid);
+            if (r != null && !isSalvagerRecipe(r)) count++;
+        }
+        return count;
+    }
+
+    private static class TreeNode {
+        String itemId;
+        long quantity;
+        int depth;
+        boolean isCraftable;
+        boolean isExpanded;
+        boolean isResourceType;
+        int recipeIndex;
+        int recipeCount;
+    }
+
+    private List<TreeNode> buildCraftingTree(String rootItemId, int quantity) {
+        List<TreeNode> result = new ArrayList<>();
+        List<String> recipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(rootItemId, Collections.emptyList());
+        if (recipeIds.isEmpty()) return result;
+
+        CraftingRecipe recipe = getNonSalvagerRecipe(rootItemId, recipeIds);
+        if (recipe == null) return result;
+
+        int outputQty = 1;
+        MaterialQuantity[] outputs = recipe.getOutputs();
+        if (outputs != null) {
+            for (MaterialQuantity output : outputs) {
+                if (output != null && rootItemId.equals(output.getItemId())) {
+                    outputQty = Math.max(1, output.getQuantity());
+                    break;
+                }
+            }
+        }
+
+        long craftsNeeded = ((long) quantity + outputQty - 1) / outputQty;
+
+        Set<String> visited = new HashSet<>();
+        visited.add(rootItemId);
+
+        for (MaterialQuantity input : getRecipeInputs(recipe)) {
+            addTreeNodes(result, input, craftsNeeded, 0, visited);
+        }
+        return result;
+    }
+
+    private void addTreeNodes(List<TreeNode> result, MaterialQuantity input, long parentCrafts, int depth, Set<String> visited) {
+        if (depth > 10) return;
+
+        String itemId = input.getItemId();
+        boolean isResource = (itemId == null);
+
+        if (isResource) {
+            TreeNode node = new TreeNode();
+            node.itemId = input.getResourceTypeId();
+            node.quantity = (long) input.getQuantity() * parentCrafts;
+            node.depth = depth;
+            node.isCraftable = false;
+            node.isResourceType = true;
+            node.recipeIndex = 0;
+            node.recipeCount = 0;
+            result.add(node);
+            return;
+        }
+
+        long needed = (long) input.getQuantity() * parentCrafts;
+        List<String> recipeIds = JETPlugin.ITEM_TO_RECIPES.getOrDefault(itemId, Collections.emptyList());
+        boolean circular = visited.contains(itemId);
+
+        // Get non-salvager recipe
+        CraftingRecipe subRecipe = (!circular && !recipeIds.isEmpty()) ? getNonSalvagerRecipe(itemId, recipeIds) : null;
+        boolean craftable = subRecipe != null;
+        int nonSalvagerCount = craftable ? getNonSalvagerRecipeCount(recipeIds) : 0;
+        int choiceIdx = calcRecipeChoices.getOrDefault(itemId, 0);
+        if (choiceIdx >= nonSalvagerCount) choiceIdx = 0;
+
+        TreeNode node = new TreeNode();
+        node.itemId = itemId;
+        node.quantity = needed;
+        node.depth = depth;
+        node.isCraftable = craftable;
+        node.isExpanded = craftable && !calcCollapsedNodes.contains(itemId);
+        node.isResourceType = false;
+        node.recipeIndex = choiceIdx;
+        node.recipeCount = nonSalvagerCount;
+        result.add(node);
+
+        if (craftable && node.isExpanded) {
+            int subOutputQty = 1;
+            MaterialQuantity[] outputs = subRecipe.getOutputs();
+            if (outputs != null) {
+                for (MaterialQuantity output : outputs) {
+                    if (output != null && itemId.equals(output.getItemId())) {
+                        subOutputQty = Math.max(1, output.getQuantity());
+                        break;
                     }
                 }
             }
+            long subCrafts = (needed + subOutputQty - 1) / subOutputQty;
+
+            visited.add(itemId);
+            for (MaterialQuantity subInput : getRecipeInputs(subRecipe)) {
+                addTreeNodes(result, subInput, subCrafts, depth + 1, visited);
+            }
+            visited.remove(itemId);
         }
     }
 
@@ -2588,7 +2799,7 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             return;
         }
 
-        CraftingRecipe recipe = JETPlugin.getInstance().getRecipeRegistry().get(recipeIds.get(0));
+        CraftingRecipe recipe = getNonSalvagerRecipe(itemId, recipeIds);
         if (recipe == null) {
             materials.merge(itemId, needed, Long::sum);
             return;

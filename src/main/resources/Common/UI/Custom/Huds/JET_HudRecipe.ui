@@ -1,13 +1,10 @@
-// UI file adapted from BIV (BetterItemViewer)
-$C = "../Common.ui";
-
 Group {
   LayoutMode: Top;
-  Anchor: (Top: 4);
+  Padding: (Bottom: 4);
 
   Group {
     Padding: (Full: 8);
-    Background: (TexturePath: "../Common/ContainerFullPatch.png", Border: 23);
+    Background: (Color: #111827(0.9));
 
     Group {
       LayoutMode: Top;
