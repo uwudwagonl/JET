@@ -13,10 +13,14 @@ import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import com.hypixel.hytale.server.core.entity.UUIDComponent;
+import com.hypixel.hytale.server.core.permissions.PermissionsModule;
 import dev.hytalemod.jet.JETPlugin;
+import dev.hytalemod.jet.config.JETConfig;
 
 import javax.annotation.Nonnull;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -56,6 +60,22 @@ public class JETPinRecipeCommand extends AbstractCommand {
         return CompletableFuture.runAsync(() -> {
             PlayerRef playerRef = (PlayerRef) store.getComponent(ref, PlayerRef.getComponentType());
             if (playerRef == null) return;
+
+            JETConfig config = JETPlugin.getInstance().getConfig();
+            if (config.requireCreativeOrOp) {
+                GameMode gameMode = player.getGameMode();
+                boolean isCreative = gameMode != null && gameMode.name().equals("Creative");
+                if (!isCreative) {
+                    UUIDComponent uuidComponent = store.getComponent(ref, UUIDComponent.getComponentType());
+                    PermissionsModule perms = PermissionsModule.get();
+                    Set<String> groups = perms.getGroupsForUser(uuidComponent.getUuid());
+                    boolean isOp = groups != null && groups.contains("OP");
+                    if (!isOp) {
+                        playerRef.sendMessage(Message.raw("[JET] This command requires Creative mode or OP.").color("#FF5555"));
+                        return;
+                    }
+                }
+            }
 
             String recipeId = recipeArg.get(context);
 

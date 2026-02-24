@@ -24,6 +24,8 @@ dependencies {
     // Test dependencies
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(files("libs/hytale-server.jar"))
+    testImplementation("com.google.code.gson:gson:2.10.1")
 }
 
 // Configure server testing

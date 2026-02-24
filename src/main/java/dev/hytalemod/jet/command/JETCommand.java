@@ -12,11 +12,15 @@ import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.entity.UUIDComponent;
+import com.hypixel.hytale.server.core.permissions.PermissionsModule;
 import dev.hytalemod.jet.JETPlugin;
+import dev.hytalemod.jet.config.JETConfig;
 import dev.hytalemod.jet.gui.JETGui;
 import dev.hytalemod.jet.storage.BrowserState;
 
 import javax.annotation.Nonnull;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -52,9 +56,26 @@ public class JETCommand extends AbstractCommand {
             PlayerRef playerRef = (PlayerRef) store.getComponent(ref, PlayerRef.getComponentType());
 
             if (playerRef != null) {
-                if (JETPlugin.getInstance().getConfig().disableJetCommand) {
+                JETConfig config = JETPlugin.getInstance().getConfig();
+
+                if (config.disableJetCommand) {
                     playerRef.sendMessage(Message.raw("[JET] The /jet command is disabled on this server. Craft a Pex Glyph and right-click it to open the browser.").color("#FFAA00"));
                     return;
+                }
+
+                if (config.requireCreativeOrOp) {
+                    GameMode gameMode = player.getGameMode();
+                    boolean isCreative = gameMode != null && gameMode.name().equals("Creative");
+                    if (!isCreative) {
+                        UUIDComponent uuidComponent = store.getComponent(ref, UUIDComponent.getComponentType());
+                        PermissionsModule perms = PermissionsModule.get();
+                        Set<String> groups = perms.getGroupsForUser(uuidComponent.getUuid());
+                        boolean isOp = groups != null && groups.contains("OP");
+                        if (!isOp) {
+                            playerRef.sendMessage(Message.raw("[JET] This command requires Creative mode or OP.").color("#FF5555"));
+                            return;
+                        }
+                    }
                 }
 
                 BrowserState saved = JETPlugin.getInstance().getBrowserStateStorage().getState(playerRef.getUuid());

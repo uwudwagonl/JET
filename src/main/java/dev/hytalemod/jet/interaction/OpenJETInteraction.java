@@ -13,6 +13,7 @@ import com.hypixel.hytale.server.core.modules.interaction.interaction.config.Sim
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import com.hypixel.hytale.server.core.Message;
 import dev.hytalemod.jet.JETPlugin;
 import dev.hytalemod.jet.gui.JETGui;
 import dev.hytalemod.jet.storage.BrowserState;
@@ -48,6 +49,11 @@ public class OpenJETInteraction extends SimpleInstantInteraction {
 
         PlayerRef playerRef = (PlayerRef) commandBuffer.getComponent(ref, PlayerRef.getComponentType());
         if (playerRef != null) {
+            if (JETPlugin.getInstance().getConfig().disableGlyph) {
+                world.execute(() -> playerRef.sendMessage(Message.raw("[JET] The Pex Glyph is disabled on this server.").color("#FFAA00")));
+                return;
+            }
+
             world.execute(() -> {
                 try {
                     BrowserState saved = JETPlugin.getInstance().getBrowserStateStorage().getState(playerRef.getUuid());

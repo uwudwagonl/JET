@@ -13,12 +13,16 @@ import com.hypixel.hytale.server.core.entity.entities.player.pages.PageManager;
 import com.hypixel.hytale.server.core.entity.movement.MovementStatesComponent;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import com.hypixel.hytale.protocol.GameMode;
+import com.hypixel.hytale.server.core.entity.UUIDComponent;
+import com.hypixel.hytale.server.core.permissions.PermissionsModule;
 import dev.hytalemod.jet.JETPlugin;
 import dev.hytalemod.jet.component.JETKeybindComponent;
 import dev.hytalemod.jet.config.JETConfig;
 import dev.hytalemod.jet.gui.JETGui;
 import dev.hytalemod.jet.storage.BrowserState;
 
+import java.util.Set;
 import java.util.logging.Level;
 
 public class AltKeyBind extends EntityTickingSystem<EntityStore> {
@@ -67,6 +71,20 @@ public class AltKeyBind extends EntityTickingSystem<EntityStore> {
                 PageManager pageManager = player.getPageManager();
                 if (pageManager.getCustomPage() != null) {
                     return; // Don't open if another custom page is already showing
+                }
+
+                if (config.requireCreativeOrOp) {
+                    GameMode gameMode = player.getGameMode();
+                    boolean isCreative = gameMode != null && gameMode.name().equals("Creative");
+                    if (!isCreative) {
+                        UUIDComponent uuidComponent = store.getComponent(ref, UUIDComponent.getComponentType());
+                        PermissionsModule perms = PermissionsModule.get();
+                        Set<String> groups = perms.getGroupsForUser(uuidComponent.getUuid());
+                        boolean isOp = groups != null && groups.contains("OP");
+                        if (!isOp) {
+                            return;
+                        }
+                    }
                 }
 
                 try {

@@ -20,6 +20,12 @@ public class JETConfig {
     // Background opacity (0.0 to 1.0)
     public float backgroundOpacity = 0.8f;
 
+    // Disable the Pex Glyph item interaction (prevents opening JET via glyph right-click)
+    public boolean disableGlyph = false;
+
+    // Require Creative mode or OP to use /jet and related commands
+    public boolean requireCreativeOrOp = false;
+
     public JETConfig() {
     }
 }
