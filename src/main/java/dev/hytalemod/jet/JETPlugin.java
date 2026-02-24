@@ -78,6 +78,13 @@ public class JETPlugin extends JavaPlugin {
         super(init);
     }
 
+    // HStats function to extract statistics 
+    @Override
+    protected void setup() {
+        super.setup();
+        new HStats("1db7d557-ac47-4379-af75-332245251314", "1.10.2");    
+    }
+
     /**
      * Get the JET data directory in UserData/JET (not Mods folder)
      */
