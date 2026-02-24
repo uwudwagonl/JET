@@ -33,7 +33,9 @@ jobs:
 
       - name: Compile and run tests
         if: steps.check-jar.outputs.jar_exists == 'true'
-        run: ./gradlew test --no-daemon
+        run: |
+          chmod +x gradlew
+          ./gradlew test --no-daemon
 
       - name: Upload test results
         if: steps.check-jar.outputs.jar_exists == 'true' && always()
