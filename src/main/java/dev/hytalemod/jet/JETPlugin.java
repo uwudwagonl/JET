@@ -111,7 +111,7 @@ public class JETPlugin extends JavaPlugin {
     @Override
     protected void setup() {
         super.setup();
-        new HStats("1db7d557-ac47-4379-af75-332245251314", "1.10.2");
+        new HStats("1db7d557-ac47-4379-af75-332245251314", "1.10.3");
 
         instance = this;
         recipeHudComponentType = getEntityStoreRegistry().registerComponent(
