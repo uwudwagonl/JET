@@ -758,9 +758,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                     "Button #HistoryItem" + i + " { Padding: (Right: 3); Background: (Color: #00000000); Style: (Hovered: (Background: #ffffff30), Pressed: (Background: #ffffff50)); ItemIcon { Anchor: (Width: 28, Height: 28); Visible: true; } }");
             cmd.set("#HistoryBar #HistoryItems[" + i + "][0].ItemId", itemId);
 
-            // Add tooltip with item name
-            String displayName = getDisplayName(item, language);
-            cmd.set("#HistoryBar #HistoryItems[" + i + "].TooltipTextSpans", Message.raw(displayName));
+            // Add tooltip with colored name and basic info
+            cmd.set("#HistoryBar #HistoryItems[" + i + "].TooltipTextSpans", buildIngredientTooltip(itemId, item, 0, language));
 
             // Add click event binding
             events.addEventBinding(CustomUIEventBindingType.Activating, "#HistoryBar #HistoryItems[" + i + "]", EventData.of("HistoryItemClick", itemId), false);
@@ -1637,6 +1636,12 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 // Add click event to navigate to this item
                 events.addEventBinding(CustomUIEventBindingType.Activating, rSel + " #InputItems[" + j + "]", EventData.of("SelectedItem", itemId), false);
 
+                // Tooltip for ingredient
+                Item inputItem = JETPlugin.ITEMS.get(itemId);
+                if (inputItem != null) {
+                    cmd.set(rSel + " #InputItems[" + j + "].TooltipTextSpans", buildIngredientTooltip(itemId, inputItem, requiredQty, playerRef.getLanguage()));
+                }
+
                 // Count items in inventory
                 String labelText;
                 if (player != null) {
@@ -1662,6 +1667,11 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                         cmd.appendInline(rSel + " #InputItems",
                                 "Group { LayoutMode: Top; Padding: (Right: 6); AssetImage { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
                         cmd.set(rSel + " #InputItems[" + j + "][0].AssetPath", resourceType.getIcon());
+
+                        // Tooltip for resource type
+                        String rtName = resourceTypeId.replace("_", " ");
+                        cmd.set(rSel + " #InputItems[" + j + "].TooltipTextSpans",
+                                Message.raw("Any " + rtName).color("#FFAA00"));
 
                         // Count resource type items in inventory
                         String labelText;
@@ -1698,6 +1708,13 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                             "Button { LayoutMode: Top; Padding: (Right: 6); Background: (Color: #00000000); Style: (Hovered: (Background: #ffffff30), Pressed: (Background: #ffffff50)); ItemIcon { Anchor: (Width: 32, Height: 32); Visible: true; } Label { Style: (FontSize: 10, TextColor: #ffffff, HorizontalAlignment: Center); Padding: (Top: 2); } }");
                     cmd.set(rSel + " #OutputItems[" + j + "][0].ItemId", outputItemId);
                     cmd.set(rSel + " #OutputItems[" + j + "][1].Text", "x" + output.getQuantity());
+
+                    // Tooltip for output
+                    Item outputItem = JETPlugin.ITEMS.get(outputItemId);
+                    if (outputItem != null) {
+                        Message outputName = getColoredItemName(outputItem, getDisplayName(outputItem, playerRef.getLanguage()));
+                        cmd.set(rSel + " #OutputItems[" + j + "].TooltipTextSpans", outputName);
+                    }
 
                     // Add click event to navigate to this item
                     events.addEventBinding(CustomUIEventBindingType.Activating, rSel + " #OutputItems[" + j + "]", EventData.of("SelectedItem", outputItemId), false);
@@ -1947,24 +1964,17 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             }
         } catch (Exception ignored) {}
 
-        // Weapon Stats
+        // Weapon Stats - read damage from JSON (getDamageInteractions returns empty)
         if (item.getWeapon() != null) {
-            tooltip.separator();
-            boolean hasWeaponStats = false;
-
             try {
-                // Damage interactions
-                Method getDamageMethod = item.getWeapon().getClass().getMethod("getDamageInteractions");
-                Object damageInteractions = getDamageMethod.invoke(item.getWeapon());
-                if (damageInteractions instanceof java.util.Map) {
-                    java.util.Map<?, ?> damageMap = (java.util.Map<?, ?>) damageInteractions;
-                    if (!damageMap.isEmpty()) {
-                        hasWeaponStats = true;
-                        for (java.util.Map.Entry<?, ?> entry : damageMap.entrySet()) {
-                            String interactionName = entry.getKey().toString().replace("_", " ");
-                            String value = entry.getValue().toString();
-                            tooltip.line(interactionName, value);
-                        }
+                Map<String, int[]> attackDamage = readWeaponDamageFromJson(itemId);
+                if (!attackDamage.isEmpty()) {
+                    tooltip.separator();
+                    for (Map.Entry<String, int[]> entry : attackDamage.entrySet()) {
+                        String attackName = entry.getKey().replace("_", " ");
+                        int[] dmg = entry.getValue();
+                        String dmgStr = (dmg[0] == dmg[1]) ? String.valueOf(dmg[0]) : dmg[0] + "-" + dmg[1];
+                        tooltip.line(attackName, dmgStr + " dmg");
                     }
                 }
             } catch (Exception ignored) {}
@@ -1974,7 +1984,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                 Method getStatModsMethod = item.getWeapon().getClass().getMethod("getStatModifiers");
                 Object statMods = getStatModsMethod.invoke(item.getWeapon());
                 if (statMods != null) {
-                    // Handle Int2ObjectMap
                     Method int2ObjectEntrySetMethod = statMods.getClass().getMethod("int2ObjectEntrySet");
                     Object entrySet = int2ObjectEntrySetMethod.invoke(statMods);
 
@@ -1984,7 +1993,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                                 Method getIntKeyMethod = entryObj.getClass().getMethod("getIntKey");
                                 int statTypeIndex = (Integer) getIntKeyMethod.invoke(entryObj);
 
-                                // Get the stat type name
                                 Class<?> entityStatTypeClass = Class.forName("com.hypixel.hytale.server.core.modules.entitystats.asset.EntityStatType");
                                 Method getAssetMapMethod = entityStatTypeClass.getMethod("getAssetMap");
                                 Object assetMap = getAssetMapMethod.invoke(null);
@@ -2001,7 +2009,6 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
                                     for (Object modifier : modifiers) {
                                         String formatted = formatStaticModifier(modifier);
                                         tooltip.line(statId, "+" + formatted);
-                                        hasWeaponStats = true;
                                     }
                                 }
                             } catch (Exception ignored) {}
@@ -2062,9 +2069,80 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
             } catch (Exception ignored) {}
         }
 
+        // Recipe/usage counts
+        List<String> craftRecipes = JETPlugin.ITEM_TO_RECIPES.getOrDefault(itemId, Collections.emptyList());
+        List<String> usageRecipes = JETPlugin.ITEM_FROM_RECIPES.getOrDefault(itemId, Collections.emptyList());
+        if (!craftRecipes.isEmpty() || !usageRecipes.isEmpty()) {
+            tooltip.separator();
+            if (!craftRecipes.isEmpty()) {
+                tooltip.append(craftRecipes.size() + " recipe" + (craftRecipes.size() > 1 ? "s" : ""), "#55FF55").nl();
+            }
+            if (!usageRecipes.isEmpty()) {
+                tooltip.append("Used in " + usageRecipes.size() + " recipe" + (usageRecipes.size() > 1 ? "s" : ""), "#FFAA00").nl();
+            }
+        }
+
+        // Set info
+        String setName = JETPlugin.getInstance().getSetRegistry().getSetForItem(itemId);
+        if (setName != null) {
+            int setSize = JETPlugin.getInstance().getSetRegistry().getSetItems(setName).size();
+            tooltip.append(JETPlugin.getInstance().getSetRegistry().getDisplayName(setName) + " Set (" + setSize + " pcs)", "#bb66ff").nl();
+        }
+
         // Usage hint
         tooltip.separator();
         tooltip.append("Click to view recipes", "#55AAFF");
+
+        return tooltip.build();
+    }
+
+    private Message buildIngredientTooltip(String itemId, Item item, int quantity, String language) {
+        if (item == null) {
+            return quantity > 0 ? Message.raw(itemId + " x" + quantity) : Message.raw(itemId);
+        }
+
+        TooltipBuilder tooltip = TooltipBuilder.create();
+
+        // Item name with quality color
+        String displayName = getDisplayName(item, language);
+        if (displayName == null || displayName.isEmpty()) displayName = itemId;
+        Message coloredName = getColoredItemName(item, displayName);
+        tooltip.append(coloredName);
+
+        // Quantity needed
+        if (quantity > 0) {
+            tooltip.append(Message.raw(" x" + quantity).color("#FFAA00"));
+        }
+        tooltip.nl();
+
+        // Quality
+        try {
+            int qualityIndex = item.getQualityIndex();
+            ItemQuality quality = ItemQuality.getAssetMap().getAsset(qualityIndex);
+            if (quality != null) {
+                String qualityName = quality.getId();
+                if (qualityName != null && !qualityName.isEmpty()) {
+                    String qColor = resolveQualityColor(quality, qualityName);
+                    tooltip.append(Message.raw(qualityName).color(qColor));
+                    tooltip.nl();
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // Recipe availability hints
+        List<String> craftRecipes = JETPlugin.ITEM_TO_RECIPES.getOrDefault(itemId, List.of());
+        List<String> usageRecipes = JETPlugin.ITEM_FROM_RECIPES.getOrDefault(itemId, List.of());
+        if (!craftRecipes.isEmpty() || !usageRecipes.isEmpty()) {
+            tooltip.separator();
+            if (!craftRecipes.isEmpty()) {
+                tooltip.append(craftRecipes.size() + " recipe" + (craftRecipes.size() > 1 ? "s" : ""), "#55FF55");
+                tooltip.nl();
+            }
+            if (!usageRecipes.isEmpty()) {
+                tooltip.append("Used in " + usageRecipes.size() + " recipe" + (usageRecipes.size() > 1 ? "s" : ""), "#AAAAAA");
+                tooltip.nl();
+            }
+        }
 
         return tooltip.build();
     }

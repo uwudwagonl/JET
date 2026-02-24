@@ -50,6 +50,26 @@ $C.@PageOverlay {
           }
         }
 
+        Group #DisableGlyphSetting {
+          LayoutMode: Left;
+          Padding: (Bottom: 15);
+          Anchor: (Height: 30);
+
+          $C.@CheckBoxWithLabel #DisableGlyphCheck {
+            @Text = "Disable Pex Glyph interaction [OP]";
+          }
+        }
+
+        Group #RequireCreativeOrOpSetting {
+          LayoutMode: Left;
+          Padding: (Bottom: 15);
+          Anchor: (Height: 30);
+
+          $C.@CheckBoxWithLabel #RequireCreativeOrOpCheck {
+            @Text = "Require Creative mode or OP to use JET [OP]";
+          }
+        }
+
         Group #BackgroundSetting {
           LayoutMode: Left;
           Padding: (Bottom: 15);

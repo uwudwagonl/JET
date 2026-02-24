@@ -79,6 +79,8 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
         cmd.set("#BindAltKeyCheck #CheckBox.Value", config.bindAltKey);
         cmd.set("#GiveButtonsCheck #CheckBox.Value", config.enableGiveButtons);
         cmd.set("#DisableJetCommandCheck #CheckBox.Value", config.disableJetCommand);
+        cmd.set("#DisableGlyphCheck #CheckBox.Value", config.disableGlyph);
+        cmd.set("#RequireCreativeOrOpCheck #CheckBox.Value", config.requireCreativeOrOp);
 
         // Build background dropdown entries
         List<DropdownEntryInfo> bgEntries = new ArrayList<>();
@@ -140,6 +142,20 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
 
         events.addEventBinding(
             CustomUIEventBindingType.ValueChanged,
+            "#DisableGlyphCheck #CheckBox",
+            EventData.of("@DisableGlyph", "#DisableGlyphCheck #CheckBox.Value"),
+            false
+        );
+
+        events.addEventBinding(
+            CustomUIEventBindingType.ValueChanged,
+            "#RequireCreativeOrOpCheck #CheckBox",
+            EventData.of("@RequireCreativeOrOp", "#RequireCreativeOrOpCheck #CheckBox.Value"),
+            false
+        );
+
+        events.addEventBinding(
+            CustomUIEventBindingType.ValueChanged,
             "#BackgroundDropdown",
             EventData.of("@BackgroundImage", "#BackgroundDropdown.Value"),
             false
@@ -192,6 +208,16 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
             changed = true;
         }
 
+        if (data.disableGlyph != null && isOp) {
+            config.disableGlyph = data.disableGlyph;
+            changed = true;
+        }
+
+        if (data.requireCreativeOrOp != null && isOp) {
+            config.requireCreativeOrOp = data.requireCreativeOrOp;
+            changed = true;
+        }
+
         if (data.backgroundImage != null && !data.backgroundImage.equals(config.backgroundImage)) {
             config.backgroundImage = data.backgroundImage;
             changed = true;
@@ -226,6 +252,8 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
                 .addField(new KeyedCodec<>("@BindAltKey", Codec.BOOLEAN), (d, v) -> d.bindAltKey = v, d -> d.bindAltKey)
                 .addField(new KeyedCodec<>("@EnableGiveButtons", Codec.BOOLEAN), (d, v) -> d.enableGiveButtons = v, d -> d.enableGiveButtons)
                 .addField(new KeyedCodec<>("@DisableJetCommand", Codec.BOOLEAN), (d, v) -> d.disableJetCommand = v, d -> d.disableJetCommand)
+                .addField(new KeyedCodec<>("@DisableGlyph", Codec.BOOLEAN), (d, v) -> d.disableGlyph = v, d -> d.disableGlyph)
+                .addField(new KeyedCodec<>("@RequireCreativeOrOp", Codec.BOOLEAN), (d, v) -> d.requireCreativeOrOp = v, d -> d.requireCreativeOrOp)
                 .addField(new KeyedCodec<>("@BackgroundImage", Codec.STRING), (d, v) -> d.backgroundImage = v, d -> d.backgroundImage)
                 .addField(new KeyedCodec<>("@BackgroundOpacity", Codec.STRING), (d, v) -> d.backgroundOpacity = v, d -> d.backgroundOpacity)
                 .build();
@@ -233,6 +261,8 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
         private Boolean bindAltKey;
         private Boolean enableGiveButtons;
         private Boolean disableJetCommand;
+        private Boolean disableGlyph;
+        private Boolean requireCreativeOrOp;
         private String backgroundImage;
         private String backgroundOpacity;
 
