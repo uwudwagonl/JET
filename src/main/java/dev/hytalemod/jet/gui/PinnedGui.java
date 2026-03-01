@@ -65,8 +65,8 @@ public class PinnedGui extends InteractiveCustomUIPage<PinnedGui.GuiData> {
         cmd.append("Pages/JET_Gui.ui");
 
         // Theme/background tiling
-        dev.hytalemod.jet.config.JETConfig jetConfig = JETPlugin.getInstance().getConfig();
-        String bg = jetConfig.backgroundImage;
+        dev.hytalemod.jet.config.JETUserConfig userConfig = JETPlugin.getInstance().getUserConfig(playerRef.getUuid());
+        String bg = userConfig.backgroundImage;
         if (bg != null && !bg.equals("none") && bg.startsWith("JET_Bg_")) {
             boolean exists = JETPlugin.ITEMS.containsKey(bg);
             if (exists) {

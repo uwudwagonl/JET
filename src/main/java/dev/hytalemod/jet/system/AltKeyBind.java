@@ -19,6 +19,7 @@ import com.hypixel.hytale.server.core.permissions.PermissionsModule;
 import dev.hytalemod.jet.JETPlugin;
 import dev.hytalemod.jet.component.JETKeybindComponent;
 import dev.hytalemod.jet.config.JETConfig;
+import dev.hytalemod.jet.config.JETUserConfig;
 import dev.hytalemod.jet.gui.JETGui;
 import dev.hytalemod.jet.storage.BrowserState;
 
@@ -49,7 +50,8 @@ public class AltKeyBind extends EntityTickingSystem<EntityStore> {
             }
 
             JETConfig config = JETPlugin.getInstance().getConfig();
-            if (config == null || !config.bindAltKey) {
+            JETUserConfig userConfig = JETPlugin.getInstance().getUserConfig(playerRef.getUuid());
+            if (userConfig == null || !userConfig.bindAltKey) {
                 return;
             }
 

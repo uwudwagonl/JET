@@ -23,8 +23,10 @@ import dev.hytalemod.jet.registry.DropListRegistry;
 import dev.hytalemod.jet.registry.ItemRegistry;
 import dev.hytalemod.jet.registry.RecipeRegistry;
 import dev.hytalemod.jet.registry.SetRegistry;
+import dev.hytalemod.jet.config.JETUserConfig;
 import dev.hytalemod.jet.storage.BrowserStateStorage;
 import dev.hytalemod.jet.storage.PinnedItemsStorage;
+import dev.hytalemod.jet.storage.UserConfigStorage;
 import dev.hytalemod.jet.system.AltKeyBind;
 import dev.hytalemod.jet.system.RecipeHudUpdateSystem;
 
@@ -46,7 +48,7 @@ import java.util.Date;
  */
 public class JETPlugin extends JavaPlugin {
 
-    public static final String VERSION = "1.10.2";
+    public static final String VERSION = "1.10.4";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String CONFIG_FILE = "JET_config.json";
 
@@ -57,6 +59,7 @@ public class JETPlugin extends JavaPlugin {
     private SetRegistry setRegistry;
     private PinnedItemsStorage pinnedItemsStorage;
     private BrowserStateStorage browserStateStorage;
+    private UserConfigStorage userConfigStorage;
 
     private JETConfig config;
 
@@ -111,7 +114,7 @@ public class JETPlugin extends JavaPlugin {
     @Override
     protected void setup() {
         super.setup();
-        new HStats("1db7d557-ac47-4379-af75-332245251314", "1.10.3");
+        new HStats("1db7d557-ac47-4379-af75-332245251314", "1.10.4");
 
         instance = this;
         recipeHudComponentType = getEntityStoreRegistry().registerComponent(
@@ -138,6 +141,8 @@ public class JETPlugin extends JavaPlugin {
         pinnedItemsStorage.load();
         browserStateStorage = new BrowserStateStorage();
         browserStateStorage.load();
+        userConfigStorage = new UserConfigStorage();
+        userConfigStorage.load();
 
         // Load config
         loadConfig();
@@ -160,8 +165,7 @@ public class JETPlugin extends JavaPlugin {
         getEntityStoreRegistry().registerSystem(new AltKeyBind());
 
         log(Level.INFO, "[JET] Plugin enabled - v" + VERSION);
-        String keyBindInfo = (config != null && config.bindAltKey) ? ", Alt key bound to /jet" : "";
-        log(Level.INFO, "[JET] Use /jet or /j to open item browser" + keyBindInfo);
+        log(Level.INFO, "[JET] Use /jet or /j to open item browser");
         log(Level.INFO, "[JET] Tip: Use '/jet <itemId>' to search directly (e.g. /jet Block_Stone)");
     }
 
@@ -322,6 +326,14 @@ public class JETPlugin extends JavaPlugin {
         return browserStateStorage;
     }
 
+    public UserConfigStorage getUserConfigStorage() {
+        return userConfigStorage;
+    }
+
+    public JETUserConfig getUserConfig(UUID playerUuid) {
+        return userConfigStorage.getConfig(playerUuid);
+    }
+
     public DropListRegistry getDropListRegistry() {
         return dropListRegistry;
     }
@@ -348,21 +360,21 @@ public class JETPlugin extends JavaPlugin {
 
     private void loadConfig() {
         try {
-            Path configDir = getJetDataDirectory();
+            Path configDir = getDataDirectory();
             Files.createDirectories(configDir);
             Path configPath = configDir.resolve(CONFIG_FILE);
 
             if (!Files.exists(configPath)) {
                 config = new JETConfig();
                 saveConfig(configPath);
-                log(Level.INFO, "[JET] Created default config at " + configPath);
+                log(Level.INFO, "[JET] Created default server config at " + configPath);
             } else {
                 String json = Files.readString(configPath, StandardCharsets.UTF_8);
                 config = GSON.fromJson(json, JETConfig.class);
-                log(Level.INFO, "[JET] Loaded config from " + configPath);
+                log(Level.INFO, "[JET] Loaded server config from " + configPath);
             }
         } catch (Exception e) {
-            log(Level.WARNING, "[JET] Failed to load config, using defaults: " + e.getMessage());
+            log(Level.WARNING, "[JET] Failed to load server config, using defaults: " + e.getMessage());
             config = new JETConfig();
         }
     }
@@ -372,21 +384,21 @@ public class JETPlugin extends JavaPlugin {
             String json = GSON.toJson(config);
             Files.writeString(configPath, json, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            log(Level.WARNING, "[JET] Failed to save config: " + e.getMessage());
+            log(Level.WARNING, "[JET] Failed to save server config: " + e.getMessage());
         }
     }
 
     /**
-     * Save the current config to the data directory
+     * Save the server config to the per-world data directory
      */
     public void saveConfig() {
         try {
-            Path configDir = getJetDataDirectory();
+            Path configDir = getDataDirectory();
             Files.createDirectories(configDir);
             Path configPath = configDir.resolve(CONFIG_FILE);
             saveConfig(configPath);
         } catch (IOException e) {
-            log(Level.WARNING, "[JET] Failed to save config: " + e.getMessage());
+            log(Level.WARNING, "[JET] Failed to save server config: " + e.getMessage());
         }
     }
 

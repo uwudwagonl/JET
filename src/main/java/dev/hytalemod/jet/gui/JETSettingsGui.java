@@ -18,14 +18,17 @@ import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import dev.hytalemod.jet.JETPlugin;
 import dev.hytalemod.jet.config.JETConfig;
+import dev.hytalemod.jet.config.JETUserConfig;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.SettingsData> {
 
     private final JETPlugin plugin;
     private boolean isOp = false;
+    private UUID playerUuid;
 
     // Built-in background options
     private static final String[] BUILTIN_BACKGROUNDS = {
@@ -63,26 +66,32 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
     public void build(Ref<EntityStore> ref, UICommandBuilder cmd, UIEventBuilder events, Store<EntityStore> store) {
         cmd.append("Pages/JET_Settings.ui");
 
-        // Check if player is OP
+        // Check if player is OP and get UUID
         try {
             com.hypixel.hytale.server.core.entity.UUIDComponent uuidComponent =
                     store.getComponent(ref, com.hypixel.hytale.server.core.entity.UUIDComponent.getComponentType());
             if (uuidComponent != null) {
+                playerUuid = uuidComponent.getUuid();
                 com.hypixel.hytale.server.core.permissions.PermissionsModule perms =
                         com.hypixel.hytale.server.core.permissions.PermissionsModule.get();
-                java.util.Set<String> groups = perms.getGroupsForUser(uuidComponent.getUuid());
+                java.util.Set<String> groups = perms.getGroupsForUser(playerUuid);
                 isOp = groups != null && groups.contains("OP");
             }
         } catch (Exception ignored) {}
 
-        JETConfig config = plugin.getConfig();
-        cmd.set("#BindAltKeyCheck #CheckBox.Value", config.bindAltKey);
-        cmd.set("#GiveButtonsCheck #CheckBox.Value", config.enableGiveButtons);
-        cmd.set("#DisableJetCommandCheck #CheckBox.Value", config.disableJetCommand);
-        cmd.set("#DisableGlyphCheck #CheckBox.Value", config.disableGlyph);
-        cmd.set("#RequireCreativeOrOpCheck #CheckBox.Value", config.requireCreativeOrOp);
+        JETConfig serverConfig = plugin.getConfig();
+        JETUserConfig userConfig = playerUuid != null ? plugin.getUserConfig(playerUuid) : new JETUserConfig();
 
-        // Build background dropdown entries
+        // User preferences
+        cmd.set("#BindAltKeyCheck #CheckBox.Value", userConfig.bindAltKey);
+
+        // Server settings
+        cmd.set("#GiveButtonsCheck #CheckBox.Value", serverConfig.enableGiveButtons);
+        cmd.set("#DisableJetCommandCheck #CheckBox.Value", serverConfig.disableJetCommand);
+        cmd.set("#DisableGlyphCheck #CheckBox.Value", serverConfig.disableGlyph);
+        cmd.set("#RequireCreativeOrOpCheck #CheckBox.Value", serverConfig.requireCreativeOrOp);
+
+        // Build background dropdown entries (user preference)
         List<DropdownEntryInfo> bgEntries = new ArrayList<>();
         for (int i = 0; i < BUILTIN_BACKGROUNDS.length; i++) {
             bgEntries.add(new DropdownEntryInfo(
@@ -103,9 +112,9 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
         }
 
         cmd.set("#BackgroundDropdown.Entries", bgEntries);
-        cmd.set("#BackgroundDropdown.Value", config.backgroundImage != null ? config.backgroundImage : "none");
+        cmd.set("#BackgroundDropdown.Value", userConfig.backgroundImage != null ? userConfig.backgroundImage : "none");
 
-        // Build opacity dropdown
+        // Build opacity dropdown (user preference)
         List<DropdownEntryInfo> opacityEntries = new ArrayList<>();
         opacityEntries.add(new DropdownEntryInfo(LocalizableString.fromString("20%"), "0.2"));
         opacityEntries.add(new DropdownEntryInfo(LocalizableString.fromString("40%"), "0.4"));
@@ -113,10 +122,10 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
         opacityEntries.add(new DropdownEntryInfo(LocalizableString.fromString("80%"), "0.8"));
         opacityEntries.add(new DropdownEntryInfo(LocalizableString.fromString("100%"), "1.0"));
         cmd.set("#OpacityDropdown.Entries", opacityEntries);
-        cmd.set("#OpacityDropdown.Value", String.valueOf(config.backgroundOpacity));
+        cmd.set("#OpacityDropdown.Value", String.valueOf(userConfig.backgroundOpacity));
 
         // Set preview image
-        updatePreview(cmd, config.backgroundImage);
+        updatePreview(cmd, userConfig.backgroundImage);
 
         // Event bindings
         events.addEventBinding(
@@ -189,59 +198,67 @@ public class JETSettingsGui extends InteractiveCustomUIPage<JETSettingsGui.Setti
     public void handleDataEvent(Ref<EntityStore> ref, Store<EntityStore> store, SettingsData data) {
         super.handleDataEvent(ref, store, data);
 
-        JETConfig config = plugin.getConfig();
-        boolean changed = false;
+        JETConfig serverConfig = plugin.getConfig();
+        JETUserConfig userConfig = playerUuid != null ? plugin.getUserConfig(playerUuid) : new JETUserConfig();
+        boolean serverChanged = false;
+        boolean userChanged = false;
         boolean needsPreviewUpdate = false;
 
+        // User preferences
         if (data.bindAltKey != null) {
-            config.bindAltKey = data.bindAltKey;
-            changed = true;
+            userConfig.bindAltKey = data.bindAltKey;
+            userChanged = true;
         }
 
-        if (data.enableGiveButtons != null) {
-            config.enableGiveButtons = data.enableGiveButtons;
-            changed = true;
-        }
-
-        if (data.disableJetCommand != null && isOp) {
-            config.disableJetCommand = data.disableJetCommand;
-            changed = true;
-        }
-
-        if (data.disableGlyph != null && isOp) {
-            config.disableGlyph = data.disableGlyph;
-            changed = true;
-        }
-
-        if (data.requireCreativeOrOp != null && isOp) {
-            config.requireCreativeOrOp = data.requireCreativeOrOp;
-            changed = true;
-        }
-
-        if (data.backgroundImage != null && !data.backgroundImage.equals(config.backgroundImage)) {
-            config.backgroundImage = data.backgroundImage;
-            changed = true;
+        if (data.backgroundImage != null && !data.backgroundImage.equals(userConfig.backgroundImage)) {
+            userConfig.backgroundImage = data.backgroundImage;
+            userChanged = true;
             needsPreviewUpdate = true;
         }
 
         if (data.backgroundOpacity != null) {
             try {
                 float opacity = Float.parseFloat(data.backgroundOpacity);
-                if (opacity != config.backgroundOpacity) {
-                    config.backgroundOpacity = Math.max(0.0f, Math.min(1.0f, opacity));
-                    changed = true;
+                if (opacity != userConfig.backgroundOpacity) {
+                    userConfig.backgroundOpacity = Math.max(0.0f, Math.min(1.0f, opacity));
+                    userChanged = true;
                 }
             } catch (NumberFormatException ignored) {}
         }
 
-        if (changed) {
+        // Server settings (OP-only)
+        if (data.enableGiveButtons != null && isOp) {
+            serverConfig.enableGiveButtons = data.enableGiveButtons;
+            serverChanged = true;
+        }
+
+        if (data.disableJetCommand != null && isOp) {
+            serverConfig.disableJetCommand = data.disableJetCommand;
+            serverChanged = true;
+        }
+
+        if (data.disableGlyph != null && isOp) {
+            serverConfig.disableGlyph = data.disableGlyph;
+            serverChanged = true;
+        }
+
+        if (data.requireCreativeOrOp != null && isOp) {
+            serverConfig.requireCreativeOrOp = data.requireCreativeOrOp;
+            serverChanged = true;
+        }
+
+        if (serverChanged) {
             plugin.saveConfig();
+        }
+
+        if (userChanged && playerUuid != null) {
+            plugin.getUserConfigStorage().saveConfig(playerUuid, userConfig);
         }
 
         if (needsPreviewUpdate) {
             UICommandBuilder cmd = new UICommandBuilder();
             UIEventBuilder events = new UIEventBuilder();
-            updatePreview(cmd, config.backgroundImage);
+            updatePreview(cmd, userConfig.backgroundImage);
             sendUpdate(cmd, events, false);
         }
     }

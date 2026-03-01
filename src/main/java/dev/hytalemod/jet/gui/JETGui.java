@@ -154,8 +154,8 @@ public class JETGui extends InteractiveCustomUIPage<JETGui.GuiData> {
 
         // Background theme: tile 64x64 ItemIcons across the browser.
         // Single large ItemIcon always shows red X; tiling at small proven size works.
-        dev.hytalemod.jet.config.JETConfig jetConfig = JETPlugin.getInstance().getConfig();
-        String bg = jetConfig.backgroundImage;
+        dev.hytalemod.jet.config.JETUserConfig userConfig = JETPlugin.getInstance().getUserConfig(playerRef.getUuid());
+        String bg = userConfig.backgroundImage;
         JETPlugin.getInstance().log(Level.INFO, "[JET BG] backgroundImage='" + bg + "'");
         if (bg != null && !bg.equals("none") && bg.startsWith("JET_Bg_")) {
             boolean exists = JETPlugin.ITEMS.containsKey(bg);
