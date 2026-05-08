@@ -82,7 +82,7 @@ public class InventoryTrackingSystem {
 
         try {
             // Count all items across all inventory sections
-            inventory.getCombinedEverything().forEach((slot, itemStack) -> {
+            inventory.getCombinedBackpackStorageHotbar().forEach((slot, itemStack) -> {
                 if (itemStack != null && itemStack.getItemId() != null) {
                     String itemId = itemStack.getItemId();
                     int quantity = itemStack.getQuantity();

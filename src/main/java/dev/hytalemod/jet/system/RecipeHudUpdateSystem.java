@@ -1,38 +1,45 @@
 package dev.hytalemod.jet.system;
 
+import com.hypixel.hytale.component.ArchetypeChunk;
+import com.hypixel.hytale.component.CommandBuffer;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.component.query.Query;
+import com.hypixel.hytale.component.system.EntityEventSystem;
 import com.hypixel.hytale.server.core.entity.entities.Player;
-import com.hypixel.hytale.server.core.event.events.entity.LivingEntityInventoryChangeEvent;
+import com.hypixel.hytale.server.core.inventory.InventoryChangeEvent;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import dev.hytalemod.jet.component.RecipeHudComponent;
 import dev.hytalemod.jet.hud.HudUtil;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * System that runs every tick to check for inventory changes
+ * ECS event system that handles inventory change events to update recipe HUD
  */
-public class RecipeHudUpdateSystem {
-    private static final long UPDATE_COOLDOWN_MS = 250; // Debounce updates
+public class RecipeHudUpdateSystem extends EntityEventSystem<EntityStore, InventoryChangeEvent> {
+    private static final long UPDATE_COOLDOWN_MS = 250;
     private static final Map<UUID, Long> lastUpdateTime = new ConcurrentHashMap<>();
 
-    /**
-     * Register this as an event listener in JETPlugin:
-     * getEventRegistry().register(InventoryChangeEvent.class, EventBasedHudUpdateSystem::onInventoryChange);
-     */
-    public static void onInventoryChange(LivingEntityInventoryChangeEvent event) {
-        Ref<EntityStore> ref = event.getEntity().getReference();
+    public RecipeHudUpdateSystem() {
+        super(InventoryChangeEvent.class);
+    }
+
+    @Override
+    public void handle(int index, @Nonnull ArchetypeChunk<EntityStore> archetypeChunk,
+                       @Nonnull Store<EntityStore> store, @Nonnull CommandBuffer<EntityStore> commandBuffer,
+                       @Nonnull InventoryChangeEvent event) {
+        Ref<EntityStore> ref = archetypeChunk.getReferenceTo(index);
         if (ref == null || !ref.isValid()) {
             return;
         }
-
-        Store<EntityStore> store = ref.getStore();
 
         // Check if this is a player
         Player player = store.getComponent(ref, Player.getComponentType());
@@ -63,6 +70,12 @@ public class RecipeHudUpdateSystem {
         lastUpdateTime.put(uuid, now);
         World world = ((EntityStore) store.getExternalData()).getWorld();
         CompletableFuture.runAsync(() -> HudUtil.updateHud(ref), world);
+    }
+
+    @Override
+    @Nullable
+    public Query<EntityStore> getQuery() {
+        return Player.getComponentType();
     }
 
     /**

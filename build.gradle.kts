@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.hytalemod"
-version = "1.10.4"
+version = "1.11.0"
 description = "JET Item Browser - Browse all items with search, categories, and filtering"
 
 repositories {
@@ -76,7 +76,7 @@ tasks {
     // Configure ShadowJar
     shadowJar {
         archiveBaseName.set("JET")
-        archiveVersion.set("1.10.4")
+        archiveVersion.set("1.11.0")
         archiveClassifier.set("")
     }
     

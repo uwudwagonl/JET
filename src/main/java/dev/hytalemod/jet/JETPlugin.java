@@ -8,7 +8,7 @@ import com.hypixel.hytale.component.ComponentType;
 import com.hypixel.hytale.server.core.asset.type.item.config.CraftingRecipe;
 import com.hypixel.hytale.server.core.asset.type.item.config.Item;
 import com.hypixel.hytale.server.core.asset.type.item.config.ItemDropList;
-import com.hypixel.hytale.server.core.event.events.entity.LivingEntityInventoryChangeEvent;
+
 import com.hypixel.hytale.server.core.inventory.MaterialQuantity;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
@@ -48,7 +48,7 @@ import java.util.Date;
  */
 public class JETPlugin extends JavaPlugin {
 
-    public static final String VERSION = "1.10.4";
+    public static final String VERSION = "1.11.0";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String CONFIG_FILE = "JET_config.json";
 
@@ -114,7 +114,7 @@ public class JETPlugin extends JavaPlugin {
     @Override
     protected void setup() {
         super.setup();
-        new HStats("1db7d557-ac47-4379-af75-332245251314", "1.10.4");
+        new HStats("1db7d557-ac47-4379-af75-332245251314", "1.11.0");
 
         instance = this;
         recipeHudComponentType = getEntityStoreRegistry().registerComponent(
@@ -156,7 +156,7 @@ public class JETPlugin extends JavaPlugin {
         getEventRegistry().register(LoadedAssetsEvent.class, Item.class, JETPlugin::onItemsLoaded);
         getEventRegistry().register(LoadedAssetsEvent.class, CraftingRecipe.class, JETPlugin::onRecipesLoaded);
         getEventRegistry().register(LoadedAssetsEvent.class, ItemDropList.class, JETPlugin::onDropListsLoaded);
-        getEventRegistry().registerGlobal(LivingEntityInventoryChangeEvent.class, RecipeHudUpdateSystem::onInventoryChange);
+        getEntityStoreRegistry().registerSystem(new RecipeHudUpdateSystem());
 
         // Register custom interaction for Pex Glyph item
         Interaction.CODEC.register("OpenJET", OpenJETInteraction.class, OpenJETInteraction.CODEC);

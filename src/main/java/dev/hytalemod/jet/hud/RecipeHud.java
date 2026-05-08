@@ -104,7 +104,7 @@ public class RecipeHud extends CustomUIHud {
                 return;
             }
 
-            int count = inventory.getCombinedEverything().countItemStacks(itemStack ->
+            int count = inventory.getCombinedBackpackStorageHotbar().countItemStacks(itemStack ->
                     itemStack.getItemId().equals(itemId)
             );
 
@@ -131,7 +131,7 @@ public class RecipeHud extends CustomUIHud {
                 return;
             }
 
-            int count = inventory.getCombinedEverything().countItemStacks(itemStack -> {
+            int count = inventory.getCombinedBackpackStorageHotbar().countItemStacks(itemStack -> {
                 ItemResourceType[] resourceTypes = itemStack.getItem().getResourceTypes();
                 if (resourceTypes != null) {
                     for (ItemResourceType type : resourceTypes) {
